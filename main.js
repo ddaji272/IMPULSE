@@ -23,6 +23,7 @@ const playerSpeed = 5;
 const bulletSpeed = 10;
 let gameOver = false;
 let score = 0;
+let replayButton = { x: 0, y: 0, w: 200, h: 60 }; // vị trí nút “Chơi lại”
 
 // ================== AUTH SECTION ==================
 registerBtn.addEventListener("click", () => {
@@ -168,7 +169,7 @@ function update() {
 
     // ====== Kiểm tra va chạm giữa đạn và người chơi ======
     const dist = Math.hypot(b.x - player.x, b.y - player.y);
-    if (dist < 15) {
+    if (dist < 30) {
       player.alive = false;
       gameOver = true;
     }
@@ -187,7 +188,7 @@ function shootBullet() {
   const vx = len === 0 ? 0 : player.dirX / len;
   const vy = len === 0 ? -1 : player.dirY / len;
 
-  // Tạo viên đạn xuất hiện lệch ra 25px trước mặt người chơi
+  // Đạn xuất hiện cách người chơi 25px theo hướng bắn để tránh tự bắn chết mình
   const bulletStartX = player.x + vx * 25;
   const bulletStartY = player.y + vy * 25;
 
@@ -207,11 +208,10 @@ function draw() {
   ctx.fillStyle = "#0d1117";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Vẽ người chơi
   if (player.alive) {
     ctx.fillStyle = "cyan";
     ctx.beginPath();
-    ctx.arc(player.x, player.y, 15, 0, Math.PI * 2);
+    ctx.arc(player.x, player.y, 20, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.font = "16px Poppins";
@@ -220,7 +220,6 @@ function draw() {
     ctx.fillText(player.name, player.x - textWidth / 2, player.y - 25);
   }
 
-  // Vẽ đạn
   ctx.fillStyle = "yellow";
   bullets.forEach(b => {
     ctx.beginPath();
@@ -237,15 +236,38 @@ function drawGameOver() {
   ctx.fillStyle = "#ff4d4d";
   ctx.font = "60px Poppins";
   ctx.textAlign = "center";
-  ctx.fillText("💀 GAME OVER 💀", canvas.width / 2, canvas.height / 2 - 20);
+  ctx.fillText("💀 GAME OVER 💀", canvas.width / 2, canvas.height / 2 - 40);
 
   ctx.fillStyle = "white";
   ctx.font = "30px Poppins";
-  ctx.fillText(`Điểm của bạn: ${score}`, canvas.width / 2, canvas.height / 2 + 40);
+  ctx.fillText(`Điểm của bạn: ${score}`, canvas.width / 2, canvas.height / 2 + 10);
 
-  ctx.font = "20px Poppins";
-  ctx.fillText("Nhấn F5 để chơi lại", canvas.width / 2, canvas.height / 2 + 100);
+  // Vẽ nút “Chơi lại”
+  replayButton.x = canvas.width / 2 - 100;
+  replayButton.y = canvas.height / 2 + 50;
+  ctx.fillStyle = "#00cc99";
+  ctx.fillRect(replayButton.x, replayButton.y, replayButton.w, replayButton.h);
+  ctx.fillStyle = "black";
+  ctx.font = "26px Poppins";
+  ctx.fillText("Chơi lại", canvas.width / 2, replayButton.y + 40);
 }
+
+// ================== SỰ KIỆN CLICK “CHƠI LẠI” ==================
+canvas.addEventListener("click", e => {
+  if (!gameOver) return;
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+
+  if (
+    mx >= replayButton.x &&
+    mx <= replayButton.x + replayButton.w &&
+    my >= replayButton.y &&
+    my <= replayButton.y + replayButton.h
+  ) {
+    startGame(player.name);
+  }
+});
 
 // ================== POPUPS ==================
 document.getElementById("guideBtn").addEventListener("click", () => {
@@ -274,5 +296,3 @@ function loadLeaderboard() {
     .map(p => `<li>${p.name} — ${p.score} điểm</li>`)
     .join("");
 }
-
-
