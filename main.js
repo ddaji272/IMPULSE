@@ -21,6 +21,8 @@ let canShoot = true;
 const shootCooldown = 500;
 const playerSpeed = 5;
 const bulletSpeed = 10;
+let gameOver = false;
+let score = 0;
 
 // ================== AUTH SECTION ==================
 registerBtn.addEventListener("click", () => {
@@ -96,7 +98,13 @@ function startGame(playerName) {
     y: canvas.height / 2,
     dirX: 0,
     dirY: -1,
+    alive: true,
   };
+
+  bullets = [];
+  keys = {};
+  gameOver = false;
+  score = 0;
 
   window.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
   window.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
@@ -110,13 +118,19 @@ function startGame(playerName) {
 
 // ================== GAME LOOP ==================
 function gameLoop() {
-  update();
-  draw();
-  requestAnimationFrame(gameLoop);
+  if (!gameOver) {
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+  } else {
+    drawGameOver();
+  }
 }
 
 // ================== UPDATE ==================
 function update() {
+  if (!player.alive) return;
+
   let dx = 0, dy = 0;
   if (keys["w"] || keys["arrowup"]) dy -= 1;
   if (keys["s"] || keys["arrowdown"]) dy += 1;
@@ -151,6 +165,13 @@ function update() {
 
     if (bounced) b.bounceCount++;
     if (b.bounceCount > 3) b.remove = true;
+
+    // ====== Kiểm tra va chạm giữa đạn và người chơi ======
+    const dist = Math.hypot(b.x - player.x, b.y - player.y);
+    if (dist < 15) {
+      player.alive = false;
+      gameOver = true;
+    }
   });
 
   bullets = bullets.filter(b => !b.remove);
@@ -158,7 +179,7 @@ function update() {
 
 // ================== SHOOT ==================
 function shootBullet() {
-  if (!canShoot) return;
+  if (!canShoot || !player.alive) return;
   canShoot = false;
   setTimeout(() => canShoot = true, shootCooldown);
 
@@ -166,9 +187,13 @@ function shootBullet() {
   const vx = len === 0 ? 0 : player.dirX / len;
   const vy = len === 0 ? -1 : player.dirY / len;
 
+  // Tạo viên đạn xuất hiện lệch ra 25px trước mặt người chơi
+  const bulletStartX = player.x + vx * 25;
+  const bulletStartY = player.y + vy * 25;
+
   const bullet = {
-    x: player.x,
-    y: player.y,
+    x: bulletStartX,
+    y: bulletStartY,
     vx: vx,
     vy: vy,
     bounceCount: 0,
@@ -182,22 +207,44 @@ function draw() {
   ctx.fillStyle = "#0d1117";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  ctx.fillStyle = "cyan";
-  ctx.beginPath();
-  ctx.arc(player.x, player.y, 15, 0, Math.PI * 2);
-  ctx.fill();
+  // Vẽ người chơi
+  if (player.alive) {
+    ctx.fillStyle = "cyan";
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, 15, 0, Math.PI * 2);
+    ctx.fill();
 
-  ctx.font = "16px Poppins";
-  ctx.fillStyle = "white";
-  const textWidth = ctx.measureText(player.name).width;
-  ctx.fillText(player.name, player.x - textWidth / 2, player.y - 25);
+    ctx.font = "16px Poppins";
+    ctx.fillStyle = "white";
+    const textWidth = ctx.measureText(player.name).width;
+    ctx.fillText(player.name, player.x - textWidth / 2, player.y - 25);
+  }
 
+  // Vẽ đạn
   ctx.fillStyle = "yellow";
   bullets.forEach(b => {
     ctx.beginPath();
     ctx.arc(b.x, b.y, 5, 0, Math.PI * 2);
     ctx.fill();
   });
+}
+
+// ================== GAME OVER ==================
+function drawGameOver() {
+  ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = "#ff4d4d";
+  ctx.font = "60px Poppins";
+  ctx.textAlign = "center";
+  ctx.fillText("💀 GAME OVER 💀", canvas.width / 2, canvas.height / 2 - 20);
+
+  ctx.fillStyle = "white";
+  ctx.font = "30px Poppins";
+  ctx.fillText(`Điểm của bạn: ${score}`, canvas.width / 2, canvas.height / 2 + 40);
+
+  ctx.font = "20px Poppins";
+  ctx.fillText("Nhấn F5 để chơi lại", canvas.width / 2, canvas.height / 2 + 100);
 }
 
 // ================== POPUPS ==================
@@ -227,3 +274,5 @@ function loadLeaderboard() {
     .map(p => `<li>${p.name} — ${p.score} điểm</li>`)
     .join("");
 }
+
+
