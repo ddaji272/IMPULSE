@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Impulse - Web Game</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="menu" class="menu-container">
+    <h1 class="title">⚡ IMPULSE ⚡</h1>
+
+    <div class="auth-section">
+      <input type="text" id="username" placeholder="Tên đăng nhập" />
+      <input type="password" id="password" placeholder="Mật khẩu" />
+      <div class="auth-buttons">
+        <button id="registerBtn">Đăng ký</button>
+        <button id="loginBtn">Đăng nhập</button>
+      </div>
+    </div>
+
+    <p id="authMsg" class="info-msg" style="display:none;"></p>
+
+    <hr class="divider" />
+
+    <div class="display-name-section">
+      <input type="text" id="displayName" placeholder="Nhập tên hiển thị..." />
+      <p id="error" class="error-msg" style="display:none;"></p>
+      <button id="playBtn">🎮 Bắt đầu chơi</button>
+    </div>
+
+    <div class="menu-buttons">
+      <button id="leaderboardBtn">🏆 Leaderboard</button>
+      <button id="guideBtn">📘 Hướng dẫn</button>
+    </div>
+  </div>
+
+  <canvas id="gameCanvas" style="display:none;"></canvas>
+
+  <!-- Popup hướng dẫn -->
+  <div id="guidePopup" class="popup hidden">
+    <div class="popup-content">
+      <h2>📘 Hướng dẫn</h2>
+      <p>
+        - Di chuyển bằng các phím <b>W A S D</b><br />
+        - Bắn bằng nút cách-space (mỗi phát cách nhau 0.5 giây)<br />
+        - Mục tiêu: sống sót đến cuối cùng trong map mê cung!<br />
+        - Game tự động chọn map ngẫu nhiên khi bắt đầu trận.
+      </p>
+      <button class="closeBtn">Đóng</button>
+    </div>
+  </div>
+
+  <!-- Popup leaderboard -->
+  <div id="leaderboardPopup" class="popup hidden">
+    <div class="popup-content">
+      <h2>🏆 Leaderboard</h2>
+      <ul id="leaderboardList"></ul>
+      <button class="closeBtn">Đóng</button>
+    </div>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>

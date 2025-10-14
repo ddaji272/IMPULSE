@@ -1,0 +1,109 @@
+body {
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+  background: linear-gradient(135deg, #0d1117, #1b2838);
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.menu-container {
+  text-align: center;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 30px;
+  border-radius: 20px;
+  box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
+  width: 90%;
+  max-width: 400px;
+  backdrop-filter: blur(5px);
+}
+
+.title {
+  font-size: 2.5em;
+  color: cyan;
+  margin-bottom: 15px;
+}
+
+input {
+  width: 80%;
+  padding: 10px;
+  margin: 8px 0;
+  border-radius: 10px;
+  border: none;
+  text-align: center;
+  font-size: 1em;
+}
+
+button {
+  margin: 6px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 10px;
+  background-color: cyan;
+  color: #111;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+button:hover {
+  background-color: #00ffffcc;
+  transform: scale(1.05);
+}
+
+.error-msg {
+  color: #ff5c5c;
+  font-size: 0.9em;
+}
+
+.info-msg {
+  color: #00ffcc;
+  font-size: 0.95em;
+  margin-top: 5px;
+}
+
+.divider {
+  margin: 20px auto;
+  width: 70%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  backdrop-filter: blur(3px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.popup.hidden {
+  display: none;
+}
+
+.popup-content {
+  background-color: #1e293b;
+  padding: 20px 30px;
+  border-radius: 15px;
+  text-align: center;
+  width: 80%;
+  max-width: 400px;
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+}
+
+.popup-content h2 {
+  color: cyan;
+  margin-bottom: 10px;
+}
+
+.closeBtn {
+  background-color: #00ffff;
+  color: #111;
+  margin-top: 15px;
+  border-radius: 8px;
+}
