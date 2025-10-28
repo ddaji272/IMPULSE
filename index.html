@@ -4,10 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Impulse - Web Game</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/effects.css" />
 </head>
 <body>
-  <div id="menu" class="menu-container">
+  <!-- ========== HOME ========== -->
+  <div id="home" class="menu-container">
     <h1 class="title">⚡ IMPULSE ⚡</h1>
 
     <div class="auth-section">
@@ -24,9 +26,9 @@
     <hr class="divider" />
 
     <div class="display-name-section">
-      <input type="text" id="displayName" placeholder="Nhập tên hiển thị..." />
-      <p id="error" class="error-msg" style="display:none;"></p>
-      <button id="playBtn">🎮 Bắt đầu chơi</button>
+      <input type="text" id="displayName" placeholder="Nhập tên hiển thị (Guest)..." />
+      <p id="error" class="error-msg" style="display:none"></p>
+      <button id="playBtn">🎮 Bắt đầu chơi (Demo)</button>
     </div>
 
     <div class="menu-buttons">
@@ -35,6 +37,41 @@
     </div>
   </div>
 
+  <!-- ========== MENU ========== -->
+  <div id="menu" class="menu-container hidden">
+    <div class="menu-top">
+      <h1 class="title">⚡ IMPULSE ⚡</h1>
+      <div class="wallet">
+        <span class="coin">🪙</span>
+        <span id="goldAmount">0</span>
+      </div>
+    </div>
+
+    <p id="welcomeMsg">Chào mừng <span id="userDisplay">User</span> đã trở lại!</p>
+
+    <hr class="divider" />
+
+    <div class="menu-buttons center">
+      <button id="btnAvatar">🧍 Skin Avatar</button>
+      <button id="btnBullet">💥 Skin Đạn</button>
+    </div>
+
+    <hr class="divider" />
+
+    <div class="center">
+      <button id="btnPlay" class="play-btn">⚔️ VÀO GAME</button>
+      <button id="btnLogout" class="logout-btn">🚪 Đăng xuất</button>
+    </div>
+
+    <hr class="divider" />
+
+    <div class="menu-buttons">
+      <button id="btnLeaderboard2">🏆 Leaderboard</button>
+      <button id="btnGuide2">📘 Hướng dẫn</button>
+    </div>
+  </div>
+
+  <!-- Canvas game -->
   <canvas id="gameCanvas" style="display:none;"></canvas>
 
   <!-- Popup hướng dẫn -->
@@ -43,9 +80,9 @@
       <h2>📘 Hướng dẫn</h2>
       <p>
         - Di chuyển bằng các phím <b>W A S D</b><br />
-        - Bắn bằng nút cách-space (mỗi phát cách nhau 0.5 giây)<br />
-        - Mục tiêu: sống sót đến cuối cùng trong map mê cung!<br />
-        - Game tự động chọn map ngẫu nhiên khi bắt đầu trận.
+        - Bắn bằng phím <b>Space</b> (cooldown 0.5s)<br />
+        - Mục tiêu: sống sót đến cuối cùng (demo: 1 bot bắn bạn)<br />
+        - Sau khi đăng nhập, chế độ mạng LAN sẽ được bật (chưa triển khai trong demo).
       </p>
       <button class="closeBtn">Đóng</button>
     </div>
@@ -60,6 +97,30 @@
     </div>
   </div>
 
-  <script src="main.js"></script>
+  <!-- Popup shop (avatar / bullet) -->
+  <div id="shopPopup" class="popup hidden">
+    <div class="popup-content shop-content">
+      <h2 id="shopTitle">Kho</h2>
+      <div class="shop-columns">
+        <div class="col">
+          <h3>Đã có</h3>
+          <ul id="ownedList"></ul>
+        </div>
+        <div class="col">
+          <h3>Shop</h3>
+          <ul id="shopList"></ul>
+        </div>
+      </div>
+      <button class="closeBtn">Đóng</button>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/config.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
 </body>
 </html>
