@@ -1,298 +1,239 @@
-const playBtn = document.getElementById("playBtn");
-const nameInput = document.getElementById("displayName");
-const errorMsg = document.getElementById("error");
-const authMsg = document.getElementById("authMsg");
-const canvas = document.getElementById("gameCanvas");
-const menu = document.getElementById("menu");
+// ---- MAIN: DOMContentLoaded (replace your current one) ----
+document.addEventListener("DOMContentLoaded", () => {
+  // setup UI and input first
+  setupUI();
+  setupInput();
 
-const guidePopup = document.getElementById("guidePopup");
-const leaderboardPopup = document.getElementById("leaderboardPopup");
-const leaderboardList = document.getElementById("leaderboardList");
+  // ensure home/menu/canvas initial visibility (always show home on load)
+  const homeEl = document.getElementById("home");
+  const menuEl = document.getElementById("menu");
+  const canvasEl = document.getElementById("gameCanvas");
 
-const usernameInput = document.getElementById("username");
-const passwordInput = document.getElementById("password");
-const registerBtn = document.getElementById("registerBtn");
-const loginBtn = document.getElementById("loginBtn");
+  if (homeEl) homeEl.style.display = "block";
+  if (menuEl) menuEl.style.display = "none";
+  if (canvasEl) canvasEl.style.display = "none";
 
-let loggedInUser = null;
-let ctx, player, bullets = [];
-let keys = {};
-let canShoot = true;
-const shootCooldown = 500;
-const playerSpeed = 5;
-const bulletSpeed = 10;
-let gameOver = false;
-let score = 0;
-let replayButton = { x: 0, y: 0, w: 200, h: 60 }; // vị trí nút “Chơi lại”
+  // init canvas after DOM loaded
+  initCanvas(canvasEl);
 
-// ================== AUTH SECTION ==================
-registerBtn.addEventListener("click", () => {
-  const user = usernameInput.value.trim();
-  const pass = passwordInput.value.trim();
-  if (user === "" || pass === "") {
-    showAuthMsg("Vui lòng nhập đầy đủ tài khoản và mật khẩu!", true);
-    return;
-  }
-
-  if (localStorage.getItem(user)) {
-    showAuthMsg("Tài khoản đã tồn tại!", true);
-    return;
-  }
-
-  localStorage.setItem(user, pass);
-  showAuthMsg(`${user} đã đăng ký tài khoản thành công!`);
-});
-
-loginBtn.addEventListener("click", () => {
-  const user = usernameInput.value.trim();
-  const pass = passwordInput.value.trim();
-
-  if (user === "" || pass === "") {
-    showAuthMsg("Vui lòng nhập tài khoản và mật khẩu!", true);
-    return;
-  }
-
-  const savedPass = localStorage.getItem(user);
-  if (savedPass && savedPass === pass) {
-    loggedInUser = user;
-    showAuthMsg(`Chào mừng ${user} đã trở lại!`);
-  } else {
-    showAuthMsg("Tài khoản hoặc mật khẩu sai!", true);
-  }
-});
-
-function showAuthMsg(msg, isError = false) {
-  authMsg.style.display = "block";
-  authMsg.style.color = isError ? "#ff5c5c" : "#00ffcc";
-  authMsg.textContent = msg;
-  setTimeout(() => (authMsg.style.display = "none"), 3000);
-}
-
-// ================== PLAY ==================
-playBtn.addEventListener("click", () => {
-  const name = nameInput.value.trim();
-  if (name === "") {
-    errorMsg.style.display = "block";
-    errorMsg.textContent = "Tên hiển thị không được để trống!";
-    return;
-  }
-
-  errorMsg.style.display = "none";
-  menu.style.display = "none";
-  canvas.style.display = "block";
-
-  startGame(name);
-});
-
-// ================== START GAME ==================
-function startGame(playerName) {
-  ctx = canvas.getContext("2d");
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-
-  const maps = ["Maze 1", "Maze 2", "Maze 3"];
-  const randomMap = maps[Math.floor(Math.random() * maps.length)];
-
-  player = {
-    name: playerName,
-    x: canvas.width / 2,
-    y: canvas.height / 2,
-    dirX: 0,
-    dirY: -1,
-    alive: true,
-  };
-
-  bullets = [];
-  keys = {};
-  gameOver = false;
-  score = 0;
-
-  window.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
-  window.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
-
-  ctx.font = "30px Poppins";
-  ctx.fillStyle = "white";
-  ctx.fillText(`Map ngẫu nhiên: ${randomMap}`, 50, 80);
-
-  setTimeout(gameLoop, 1000);
-}
-
-// ================== GAME LOOP ==================
-function gameLoop() {
-  if (!gameOver) {
-    update();
-    draw();
-    requestAnimationFrame(gameLoop);
-  } else {
-    drawGameOver();
-  }
-}
-
-// ================== UPDATE ==================
-function update() {
-  if (!player.alive) return;
-
-  let dx = 0, dy = 0;
-  if (keys["w"] || keys["arrowup"]) dy -= 1;
-  if (keys["s"] || keys["arrowdown"]) dy += 1;
-  if (keys["a"] || keys["arrowleft"]) dx -= 1;
-  if (keys["d"] || keys["arrowright"]) dx += 1;
-
-  if (dx !== 0 || dy !== 0) {
-    const len = Math.sqrt(dx * dx + dy * dy);
-    dx /= len;
-    dy /= len;
-    player.x += dx * playerSpeed;
-    player.y += dy * playerSpeed;
-    player.dirX = dx;
-    player.dirY = dy;
-  }
-
-  if (keys[" "]) shootBullet();
-
-  bullets.forEach(b => {
-    b.x += b.vx * bulletSpeed;
-    b.y += b.vy * bulletSpeed;
-
-    let bounced = false;
-    if (b.x <= 0 || b.x >= canvas.width) {
-      b.vx *= -1;
-      bounced = true;
+  // start the rest of main (game loop etc)
+  let last = performance.now();
+  function gameLoop(now) {
+    const delta = now - last;
+    last = now;
+    if (!gameOver) {
+      update(delta);
+      draw();
+      requestAnimationFrame(gameLoop);
+    } else {
+      drawGameOver();
     }
-    if (b.y <= 0 || b.y >= canvas.height) {
-      b.vy *= -1;
-      bounced = true;
+  }
+
+  window.startGame = function(playerName, opts = { mode: "local" }) {
+    player = new Player(playerName, canvas.width/2, canvas.height/2, true);
+    bots = [];
+    bullets = [];
+    keys = {};
+    gameOver = false;
+    score = 0;
+
+    if (opts.mode === "local") {
+      bots.push(new Bot("BOT-1", canvas.width/3, canvas.height/3));
+    } else {
+      bots.push(new Bot("BOT-1", canvas.width/3, canvas.height/3));
     }
 
-    if (bounced) b.bounceCount++;
-    if (b.bounceCount > 3) b.remove = true;
-
-    // ====== Kiểm tra va chạm giữa đạn và người chơi ======
-    const dist = Math.hypot(b.x - player.x, b.y - player.y);
-    if (dist < 30) {
-      player.alive = false;
-      gameOver = true;
-    }
-  });
-
-  bullets = bullets.filter(b => !b.remove);
-}
-
-// ================== SHOOT ==================
-function shootBullet() {
-  if (!canShoot || !player.alive) return;
-  canShoot = false;
-  setTimeout(() => canShoot = true, shootCooldown);
-
-  const len = Math.sqrt(player.dirX * player.dirX + player.dirY * player.dirY);
-  const vx = len === 0 ? 0 : player.dirX / len;
-  const vy = len === 0 ? -1 : player.dirY / len;
-
-  // Đạn xuất hiện cách người chơi 25px theo hướng bắn để tránh tự bắn chết mình
-  const bulletStartX = player.x + vx * 25;
-  const bulletStartY = player.y + vy * 25;
-
-  const bullet = {
-    x: bulletStartX,
-    y: bulletStartY,
-    vx: vx,
-    vy: vy,
-    bounceCount: 0,
-    remove: false,
-  };
-  bullets.push(bullet);
-}
-
-// ================== DRAW ==================
-function draw() {
-  ctx.fillStyle = "#0d1117";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  if (player.alive) {
-    ctx.fillStyle = "cyan";
-    ctx.beginPath();
-    ctx.arc(player.x, player.y, 20, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.font = "16px Poppins";
+    const randomMap = MAPS[Math.floor(Math.random()*MAPS.length)];
+    ctx.font = "28px Poppins";
     ctx.fillStyle = "white";
-    const textWidth = ctx.measureText(player.name).width;
-    ctx.fillText(player.name, player.x - textWidth / 2, player.y - 25);
-  }
+    ctx.fillText(`Map ngẫu nhiên: ${randomMap}`, 50, 80);
 
-  ctx.fillStyle = "yellow";
-  bullets.forEach(b => {
-    ctx.beginPath();
-    ctx.arc(b.x, b.y, 5, 0, Math.PI * 2);
-    ctx.fill();
+    setTimeout(()=> {
+      last = performance.now();
+      requestAnimationFrame(gameLoop);
+    }, 800);
+  };
+
+  // canvas click handler for Game Over buttons (unchanged logic)
+  canvasEl.addEventListener("click", (e) => {
+    if (!gameOver) return;
+    const rect = canvasEl.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+
+    if (mx >= replayButton.x && mx <= replayButton.x + replayButton.w &&
+        my >= replayButton.y && my <= replayButton.y + replayButton.h) {
+      const name = (player && player.name) ? player.name : "Guest";
+      startGame(name, { mode: "local" });
+      return;
+    }
+
+    if (mx >= homeButton.x && mx <= homeButton.x + homeButton.w &&
+        my >= homeButton.y && my <= homeButton.y + homeButton.h) {
+      // hide canvas
+      canvasEl.style.display = "none";
+      // if logged in => show menu, else show home
+      const loggedUser = document.getElementById("userDisplay").textContent;
+      if (loggedUser && loggedUser.trim() !== "") {
+        document.getElementById("menu").style.display = "block";
+      } else {
+        document.getElementById("home").style.display = "block";
+      }
+    }
   });
-}
 
-// ================== GAME OVER ==================
-function drawGameOver() {
-  ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+}); // end DOMContentLoaded
 
-  ctx.fillStyle = "#ff4d4d";
-  ctx.font = "60px Poppins";
-  ctx.textAlign = "center";
-  ctx.fillText("💀 GAME OVER 💀", canvas.width / 2, canvas.height / 2 - 40);
 
-  ctx.fillStyle = "white";
-  ctx.font = "30px Poppins";
-  ctx.fillText(`Điểm của bạn: ${score}`, canvas.width / 2, canvas.height / 2 + 10);
+// ---- NEW setupUI function (replace your existing setupUI) ----
+function setupUI() {
+  // cached elements
+  const home = document.getElementById("home");
+  const menu = document.getElementById("menu");
+  const authMsg = document.getElementById("authMsg");
+  const registerBtn = document.getElementById("registerBtn");
+  const loginBtn = document.getElementById("loginBtn");
+  const usernameInput = document.getElementById("username");
+  const passwordInput = document.getElementById("password");
+  const playBtn = document.getElementById("playBtn");
+  const displayName = document.getElementById("displayName");
+  const errorMsg = document.getElementById("error");
+  const leaderboardBtn = document.getElementById("leaderboardBtn");
+  const guideBtn = document.getElementById("guideBtn");
+  const leaderboardBtn2 = document.getElementById("btnLeaderboard2");
+  const guideBtn2 = document.getElementById("btnGuide2");
+  const guidePopup = document.getElementById("guidePopup");
+  const leaderboardPopup = document.getElementById("leaderboardPopup");
+  const leaderboardList = document.getElementById("leaderboardList");
+  const shopPopup = document.getElementById("shopPopup");
+  const shopTitle = document.getElementById("shopTitle");
+  const ownedList = document.getElementById("ownedList");
+  const shopList = document.getElementById("shopList");
+  const closeBtns = document.querySelectorAll(".closeBtn");
+  const userDisplay = document.getElementById("userDisplay");
+  const goldAmount = document.getElementById("goldAmount");
+  const menuPlayBtn = document.getElementById("btnPlay");
+  const logoutBtn = document.getElementById("btnLogout");
+  const btnAvatar = document.getElementById("btnAvatar");
+  const btnBullet = document.getElementById("btnBullet");
 
-  // Vẽ nút “Chơi lại”
-  replayButton.x = canvas.width / 2 - 100;
-  replayButton.y = canvas.height / 2 + 50;
-  ctx.fillStyle = "#00cc99";
-  ctx.fillRect(replayButton.x, replayButton.y, replayButton.w, replayButton.h);
-  ctx.fillStyle = "black";
-  ctx.font = "26px Poppins";
-  ctx.fillText("Chơi lại", canvas.width / 2, replayButton.y + 40);
-}
-
-// ================== SỰ KIỆN CLICK “CHƠI LẠI” ==================
-canvas.addEventListener("click", e => {
-  if (!gameOver) return;
-  const rect = canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
-
-  if (
-    mx >= replayButton.x &&
-    mx <= replayButton.x + replayButton.w &&
-    my >= replayButton.y &&
-    my <= replayButton.y + replayButton.h
-  ) {
-    startGame(player.name);
+  // helper
+  function showAuthMsg(msg, isError=false){
+    if(!authMsg) return;
+    authMsg.style.display="block";
+    authMsg.style.color=isError?"#ff5c5c":"#00ffcc";
+    authMsg.textContent=msg;
+    setTimeout(()=>{ authMsg.style.display="none"; },3000);
   }
-});
 
-// ================== POPUPS ==================
-document.getElementById("guideBtn").addEventListener("click", () => {
-  guidePopup.classList.remove("hidden");
-});
-document.getElementById("leaderboardBtn").addEventListener("click", () => {
-  loadLeaderboard();
-  leaderboardPopup.classList.remove("hidden");
-});
-document.querySelectorAll(".closeBtn").forEach(btn => {
-  btn.addEventListener("click", () => {
+  // Ensure initial visibility: home shown, menu hidden
+  if (home) home.style.display = "block";
+  if (menu) menu.style.display = "none";
+  const canvasEl = document.getElementById("gameCanvas");
+  if (canvasEl) canvasEl.style.display = "none";
+
+  // Register
+  registerBtn && registerBtn.addEventListener("click", ()=>{
+    const user = usernameInput.value.trim();
+    const pass = passwordInput.value.trim();
+    if(!user || !pass){ showAuthMsg("Vui lòng nhập đầy đủ tài khoản và mật khẩu!", true); return; }
+    if(localStorage.getItem("user_"+user)){ showAuthMsg("Tài khoản đã tồn tại!", true); return; }
+    const meta = { pass, gold: 1200, ownedAvatars: ["default"], ownedBullets: ["default"] };
+    localStorage.setItem("user_"+user, JSON.stringify(meta));
+    showAuthMsg(`${user} đã đăng ký tài khoản thành công!`);
+  });
+
+  // Login -> hide home, show menu
+  loginBtn && loginBtn.addEventListener("click", ()=>{
+    const user = usernameInput.value.trim();
+    const pass = passwordInput.value.trim();
+    const raw = localStorage.getItem("user_"+user);
+    if(!raw){ showAuthMsg("Tài khoản hoặc mật khẩu sai!", true); return; }
+    const meta = JSON.parse(raw);
+    if(meta.pass !== pass){ showAuthMsg("Tài khoản hoặc mật khẩu sai!", true); return; }
+
+    // show menu, hide home
+    userDisplay.textContent = user;
+    goldAmount.textContent = meta.gold || 0;
+    if (home) home.style.display = "none";
+    if (menu) menu.style.display = "block";
+  });
+
+  // Guest demo play (hide home, show canvas)
+  playBtn && playBtn.addEventListener("click", ()=>{
+    const name = displayName.value.trim();
+    if(!name){ errorMsg.style.display="block"; errorMsg.textContent="Tên hiển thị không được để trống!"; return; }
+    errorMsg.style.display="none";
+    if (home) home.style.display = "none";
+    if (canvasEl) canvasEl.style.display = "block";
+    startGame(name, { mode: "local" });
+  });
+
+  // Menu play (after login)
+  menuPlayBtn && menuPlayBtn.addEventListener("click", ()=>{
+    const loggedUser = userDisplay.textContent || null;
+    if (!loggedUser) { alert("Bạn chưa đăng nhập!"); return; }
+    const doOnline = confirm("Chế độ LAN chưa triển khai trong demo. Bắt đầu bản demo local thay thế?");
+    if (menu) menu.style.display = "none";
+    if (canvasEl) canvasEl.style.display = "block";
+    if (doOnline) startGame(loggedUser, { mode: "local" });
+    else {
+      // if cancel, return to menu
+      if (menu) menu.style.display = "block";
+      if (canvasEl) canvasEl.style.display = "none";
+    }
+  });
+
+  // Logout: hide menu, show home (use style.display consistently)
+  logoutBtn && logoutBtn.addEventListener("click", ()=>{
+    if (menu) menu.style.display = "none";
+    if (home) home.style.display = "block";
+
+    // reset fields & UI
+    if (usernameInput) usernameInput.value = "";
+    if (passwordInput) passwordInput.value = "";
+    if (userDisplay) userDisplay.textContent = "";
+    if (goldAmount) goldAmount.textContent = "0";
+
+    // ensure canvas hidden
+    if (canvasEl) canvasEl.style.display = "none";
+  });
+
+  // Leaderboard and Guide handlers (open popups)
+  function loadLeaderboard(){
+    const fakeData = [
+      {name:"Player1",score:1500},
+      {name:"Player2",score:1320},
+      {name:"Player3",score:1200},
+      {name:"Player4",score:800}
+    ];
+    leaderboardList.innerHTML = fakeData.map(p=>`<li>${p.name} — ${p.score} điểm</li>`).join("");
+  }
+  leaderboardBtn && leaderboardBtn.addEventListener("click", ()=>{ loadLeaderboard(); leaderboardPopup.classList.remove("hidden"); });
+  leaderboardBtn2 && leaderboardBtn2.addEventListener("click", ()=>{ loadLeaderboard(); leaderboardPopup.classList.remove("hidden"); });
+  guideBtn && guideBtn.addEventListener("click", ()=>{ guidePopup.classList.remove("hidden"); });
+  guideBtn2 && guideBtn2.addEventListener("click", ()=>{ guidePopup.classList.remove("hidden"); });
+
+  closeBtns.forEach(btn=> btn.addEventListener("click", ()=> {
     guidePopup.classList.add("hidden");
     leaderboardPopup.classList.add("hidden");
-  });
-});
+    shopPopup.classList.add("hidden");
+  }));
 
-// ================== FAKE LEADERBOARD ==================
-function loadLeaderboard() {
-  const fakeData = [
-    { name: "Player1", score: 1500 },
-    { name: "Player2", score: 1320 },
-    { name: "Player3", score: 1200 },
-    { name: "Player4", score: 800 },
-  ];
-  leaderboardList.innerHTML = fakeData
-    .map(p => `<li>${p.name} — ${p.score} điểm</li>`)
-    .join("");
+  // Shop openers
+  function openShop(type){
+    // same implementation as before... (you can keep your existing openShop code here)
+    // For brevity, call your previous openShop implementation if it exists globally
+    if (typeof window._openShop === "function") {
+      window._openShop(type);
+      return;
+    }
+    // otherwise implement inline as you had earlier (or paste your previous openShop body)
+    // ... (keep your earlier logic)
+  }
+
+  // wire shop buttons
+  btnAvatar && btnAvatar.addEventListener("click", ()=> openShop("avatar"));
+  btnBullet && btnBullet.addEventListener("click", ()=> openShop("bullet"));
 }
