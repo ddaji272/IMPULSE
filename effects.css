@@ -1,9 +1,0 @@
-/* effects.css - small animations & glow */
-@keyframes neon {
-  0% { box-shadow: 0 0 8px rgba(0,255,255,0.06); }
-  50% { box-shadow: 0 0 20px rgba(0,255,255,0.10); }
-  100% { box-shadow: 0 0 8px rgba(0,255,255,0.06); }
-}
-
-.title { text-shadow: 0 4px 18px rgba(0,255,255,0.04); }
-.menu-container { animation: neon 4s ease-in-out infinite; }
