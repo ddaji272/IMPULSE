@@ -1,101 +1,145 @@
 // js/main.js
 
-// 1. IMPORT tất cả các module cần thiết
 import { setupInput, keys } from "./input.js";
 import { setupUI } from "./ui.js";
 import { initCanvas, draw, drawGameOver, replayButton, homeButton } from "./render.js";
-import { initGame, updateGame, gameOver, player } from "./game.js";
-// THÊM IMPORT CHO AUDIO
-import { preloadAudio, startMusic, playSound } from "./audio.js";
+import { initGame, updateGame, gameOver, player, gameOverSoundPlayed } from "./game.js";
+// === SỬA: Thêm import cho hàm toggle ===
+import { preloadAudio, startMusic, playSound, toggleMusic, toggleSfx } from "./audio.js";
 
-// 2. Lấy DOM elements chính
 const canvasEl = document.getElementById("gameCanvas");
 const homeEl = document.getElementById("home");
 const menuEl = document.getElementById("menu");
 
 let lastTime = 0;
 let animationFrameId = null;
-let isFirstClick = true; // Biến kiểm tra click đầu tiên
+let isFirstClick = true; 
 
-// 3. Vòng lặp game (Game Loop)
 function gameLoop(now) {
-    // ... code gameLoop của bạn giữ nguyên ...
+    const delta = now - lastTime;
+    lastTime = now;
+
     updateGame(delta, keys);
     draw();
 
-    // SỬA: Thêm âm thanh khi game over
     if (gameOver) {
-        drawGameOver(); // Vẽ màn hình game over
-        cancelAnimationFrame(animationFrameId); // Dừng vòng lặp
+        drawGameOver(); 
+        cancelAnimationFrame(animationFrameId); 
         
-        // Phát âm thanh thất bại (chỉ 1 lần)
-        if (!game.gameOverSoundPlayed) {
-             playSound('defeated');
-             game.gameOverSoundPlayed = true; // Thêm cờ này vào game.js
-        }
+        // (Logic âm thanh 'defeated' đã được chuyển vào game.js)
     } else {
-        // Tiếp tục vòng lặp
         animationFrameId = requestAnimationFrame(gameLoop);
     }
 }
 
-// 4. Hàm Bắt đầu game (sẽ được truyền vào ui.js)
 function startGame(playerName) {
-    // ... code startGame của bạn giữ nguyên ...
-    // SỬA: Reset cờ âm thanh khi bắt đầu game mới
-    if (game) game.gameOverSoundPlayed = false;
+    homeEl.style.display = "none";
+    menuEl.style.display = "none";
+    canvasEl.style.display = "block";
+    
     initGame(playerName, canvasEl);
-    // ...
+    
+    lastTime = performance.now();
+    animationFrameId = requestAnimationFrame(gameLoop);
 }
 
-// 5. Hàm quay về Menu (từ màn hình Game Over)
 function goToMenu() {
-    // ... code goToMenu của bạn giữ nguyên ...
+    canvasEl.style.display = "none";
+    
+    const loggedUser = document.getElementById("userDisplay").textContent;
+    if (loggedUser && loggedUser.trim() !== "") {
+        menuEl.style.display = "block";
+    } else {
+        homeEl.style.display = "block";
+    }
 }
 
-// 6. --- KHỞI CHẠY KHI TẢI TRANG ---
+// --- KHỞI CHẠY KHI TẢI TRANG ---
 document.addEventListener("DOMContentLoaded", () => {
     
-    // --- SỬA LỖI HIỂN THỊ ---
-    // ... (Giữ nguyên code sửa lỗi hiển thị của bạn) ...
+    if (homeEl) homeEl.style.display = "block";
+    if (menuEl) menuEl.style.display = "none";
+    if (canvasEl) canvasEl.style.display = "none";
 
     // 1. TẢI TRƯỚC ÂM THANH
     preloadAudio();
 
-    // 2. Khởi tạo UI (truyền hàm startGame vào làm callback)
+    // 2. Khởi tạo UI
     setupUI(startGame);
     
-    // 3. Khởi tạo Input (lắng nghe phím)
+    // 3. Khởi tạo Input
     setupInput();
 
-    // 4. Khởi tạo Canvas (cho render.js biết)
+    // 4. Khởi tạo Canvas
     initCanvas(canvasEl);
 
-    // 5. Xử lý click trên Canvas (cho nút Replay/Home khi Game Over)
+    // 5. Xử lý click trên Canvas
     canvasEl.addEventListener("click", (e) => {
-        // THÊM ÂM THANH CLICK VÀO CANVAS
         if (isFirstClick) {
             startMusic();
             isFirstClick = false;
         }
-        playSound('button_click'); // Thêm âm thanh click
-
-        if (!gameOver) return; // Chỉ chạy khi game over
         
-        // ... (Giữ nguyên code xử lý click nút Replay/Home) ...
+        if (!gameOver) return; 
+        
+        const rect = canvasEl.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        if (mx >= replayButton.x && mx <= replayButton.x + replayButton.w &&
+            my >= replayButton.y && my <= replayButton.y + replayButton.h) {
+            
+            playSound('button_click'); // <-- Thêm âm thanh click
+            startGame(player.name);
+        }
+
+        if (mx >= homeButton.x && mx <= homeButton.x + homeButton.w &&
+            my >= homeButton.y && my <= homeButton.y + homeButton.h) {
+            
+            playSound('button_click'); // <-- Thêm âm thanh click
+            goToMenu();
+        }
     });
     
     // 6. SỰ KIỆN CLICK TOÀN CỤC ĐỂ BẮT ĐẦU NHẠC
-    // (Đây là cách để bắt đầu nhạc nền khi click lần đầu)
     function handleFirstClick() {
         if (isFirstClick) {
             startMusic();
             isFirstClick = false;
-            // Xóa listener này đi sau khi chạy lần đầu
             document.removeEventListener('click', handleFirstClick);
             document.removeEventListener('keydown', handleFirstClick);
         }
     }
     document.addEventListener('click', handleFirstClick);
     document.addEventListener('keydown', handleFirstClick);
+
+    // === 7. THÊM LOGIC CHO NÚT ÂM LƯỢNG ===
+    const musicBtn = document.getElementById("musicToggleBtn");
+    const sfxBtn = document.getElementById("sfxToggleBtn");
+
+    if (musicBtn) {
+        musicBtn.addEventListener("click", () => {
+            const isMuted = toggleMusic();
+            if (isMuted) {
+                musicBtn.textContent = "🔇"; // Biểu tượng Tắt nhạc
+                musicBtn.title = "Bật nhạc nền";
+            } else {
+                musicBtn.textContent = "🎵"; // Biểu tượng Bật nhạc
+                musicBtn.title = "Tắt nhạc nền";
+            }
+        });
+    }
+
+    if (sfxBtn) {
+        sfxBtn.addEventListener("click", () => {
+            const isMuted = toggleSfx();
+            if (isMuted) {
+                sfxBtn.textContent = "🔇"; // Biểu tượng Tắt hiệu ứng
+                sfxBtn.title = "Bật hiệu ứng";
+            } else {
+                sfxBtn.textContent = "🔊"; // Biểu tượng Bật hiệu ứng
+                sfxBtn.title = "Tắt hiệu ứng";
+            }
+        });
+    }
 });
