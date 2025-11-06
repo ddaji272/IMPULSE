@@ -1,8 +1,79 @@
-@keyframes neon {
-  0% { box-shadow: 0 0 8px rgba(0,255,255,0.06); }
-  50% { box-shadow: 0 0 20px rgba(0,255,255,0.10); }
-  100% { box-shadow: 0 0 8px rgba(0,255,255,0.06); }
+/* Thêm Google Font (cho Tiêu đề Neon và Pop-up) */
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@600&family=Orbitron:wght@700&display=swap');
+
+/* Định nghĩa màu Neon */
+:root {
+    --neon-blue: #00ffff;
+    --neon-pink: #ff00ff;
+    --neon-red: #ff005c;
+    --neon-glow: 0 0 5px var(--neon-blue), 0 0 10px var(--neon-blue), 0 0 20px rgba(0, 255, 255, 0.4);
+    --neon-red-glow: 0 0 8px var(--neon-red), 0 0 15px var(--neon-red), 0 0 25px rgba(255, 0, 92, 0.6);
 }
 
-.title { text-shadow: 0 4px 18px rgba(0,255,255,0.04); }
-.menu-container { animation: neon 4s ease-in-out infinite; }
+/* Keyframe cho hiệu ứng menu */
+@keyframes neon-pulse {
+    0% { box-shadow: 0 0 8px rgba(0,255,255,0.06); }
+    50% { box-shadow: 0 0 20px rgba(0,255,255,0.10); }
+    100% { box-shadow: 0 0 8px rgba(0,255,255,0.06); }
+}
+
+/* --- Style cho Menu và Pop-up (HTML) --- */
+
+/* Thêm hiệu ứng lơ lửng cho .menu-container */
+.menu-container { 
+    animation: neon-pulse 4s ease-in-out infinite; 
+}
+
+/* Căn giữa .menu-top sau khi đã bỏ ví tiền */
+/* (Ghi đè 'space-between' từ style.css) */
+.menu-top {
+    justify-content: center !important;
+}
+
+/* Style cho Tiêu đề (đè style, rớt hàng) */
+.menu-container .title { 
+    font-family: 'Orbitron', sans-serif !important; /* Đổi font */
+    color: var(--neon-blue) !important; /* Đảm bảo màu neon */
+    text-shadow: var(--neon-glow) !important; /* Thêm glow */
+    white-space: nowrap; /* Chống rớt hàng */
+    /* Không cần 'text-align' vì '.menu-top' đã căn giữa nó */
+}
+
+/* Áp dụng font chữ hiện đại cho các Pop-up */
+.popup-content h2, .popup-content h3, .popup-content p {
+    font-family: 'Rajdhani', sans-serif;
+}
+.popup-content h2 {
+    color: var(--neon-blue);
+    text-shadow: var(--neon-glow);
+}
+
+/* --- Style cho Ví tiền khi ở trong Pop-up --- */
+/* (Style này chỉ áp dụng khi ví tiền nằm trong shop) */
+.popup-content .wallet {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1.25em;
+    font-weight: 600;
+    color: white; 
+    text-align: center; 
+    margin-bottom: 20px; 
+    margin-top: -10px; 
+}
+.popup-content .wallet .coin {
+    font-size: 1em;
+}
+
+/* Style cho nút "Đóng" trong pop-up */
+/* (Để nó không nhận style 'button' cyan từ style.css) */
+.popup-content button.closeBtn {
+    border: 2px solid #aaa;
+    background-color: #333;
+    color: #aaa;
+    box-shadow: none; /* Bỏ shadow */
+}
+.popup-content button.closeBtn:hover {
+    background-color: #444;
+    color: white;
+    box-shadow: none;
+    transform: translateY(-3px); /* Giữ hiệu ứng hover từ style.css */
+}
