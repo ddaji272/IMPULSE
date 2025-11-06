@@ -1,19 +1,14 @@
 // js/game.js
 
-// 1. IMPORT các hằng số và logic map
+// 1. IMPORT
 import {
-    PLAYER_SPEED,
-    BULLET_SPEED,
-    SHOOT_COOLDOWN,
-    PLAYER_RADIUS,
-    BULLET_RADIUS,
-    MAX_BULLET_BOUNCE,
-    PLAYER_COLOR,
-    BULLET_COLOR
+    PLAYER_SPEED, BULLET_SPEED, SHOOT_COOLDOWN, PLAYER_RADIUS, 
+    BULLET_RADIUS, MAX_BULLET_BOUNCE, PLAYER_COLOR, BULLET_COLOR
 } from "./config.js";
 
-// THÊM "getMapCellType" vào import
 import { getRandomMap, isBlocked, CELL_SIZE, getMapCellType } from "./maps.js";
+import { AVATAR_SKINS, BULLET_SKINS } from "./skins.js";
+
 
 // 2. EXPORT các Lớp (Class)
 export class Player {
@@ -52,13 +47,11 @@ export class Bot extends Player {
     update(delta, player, bullets) {
         if (!this.alive) return;
 
-        // === LOGIC TỐC ĐỘ CỦA BOT ===
         let speedModifier = 1; 
         const botCellType = getMapCellType(this.x, this.y, currentMap);
         if (botCellType === 3) {
-            speedModifier = 0.5; // Giảm 50% tốc độ
+            speedModifier = 0.5;
         }
-        // =========================
 
         this.moveTimer += delta;
         if (this.moveTimer > 500) {
@@ -75,11 +68,9 @@ export class Bot extends Player {
             }
         }
 
-        // Áp dụng tốc độ đã điều chỉnh
         const nextX = this.x + this.vx * PLAYER_SPEED * 0.8 * speedModifier; 
         const nextY = this.y + this.vy * PLAYER_SPEED * 0.8 * speedModifier;
 
-        // Va chạm (giữ nguyên)
         const newBotX = Math.max(PLAYER_RADIUS, Math.min(canvas.width - PLAYER_RADIUS, nextX));
         if (!isBlocked(newBotX + (this.vx > 0 ? PLAYER_RADIUS : -PLAYER_RADIUS), this.y, currentMap)) {
             this.x = newBotX;
@@ -93,7 +84,6 @@ export class Bot extends Player {
             this.vy *= -1;
         }
 
-        // Logic bắn (giữ nguyên)
         this.shootTimer += delta;
         if (this.shootTimer > 900 && player && player.alive) { 
             this.shootTimer = 0;
@@ -107,7 +97,7 @@ export class Bot extends Player {
     }
 }
 
-// 3. EXPORT các biến trạng thái game
+// 3. EXPORT các biến trạng thái game (ĐÃ SỬA LỖI - THÊM EXPORT)
 export let player = null;
 export let bots = [];
 export let bullets = [];
@@ -116,47 +106,38 @@ export let score = 0;
 export let canShoot = true;
 export let currentMap = null; 
 export let playerSkin = { 
-    avatar: PLAYER_COLOR, 
-    bullet: BULLET_COLOR 
+    avatar: PLAYER_COLOR, 
+    bullet: BULLET_COLOR 
 };
 let canvas = null; 
 
-// 4. EXPORT hàm khởi tạo game (Giữ nguyên)
+// 4. EXPORT hàm khởi tạo game
 export function initGame(username, canvasEl) {
-    canvas = canvasEl;
-    gameOver = false;
-    score = 0;
-    bullets = [];
-    bots = [];
-    canShoot = true;
+    canvas = canvasEl;
+    gameOver = false;
+    score = 0;
+    bullets = [];
+    bots = [];
+    canShoot = true;
 
-    currentMap = getRandomMap(canvas.width, canvas.height);
-    const metaRaw = localStorage.getItem("user_" + username);
-    let currentAvatar = PLAYER_COLOR;
-    let currentBullet = BULLET_COLOR;
-    if (metaRaw) {
-        const meta = JSON.parse(metaRaw);
-        if (meta.currentAvatar === "ava_blue") {
-            currentAvatar = "blue";
-        } else if (meta.currentAvatar === "ava_red") {
-            currentAvatar = "red";
-        } else {
-            currentAvatar = PLAYER_COLOR;
-        }
-        if (meta.currentBullet === "bul_yellow") {
-            currentBullet = "yellow";
-        } else if (meta.currentBullet === "bul_purple") {
-            currentBullet = "purple";
-        } else {
-            currentBullet = BULLET_COLOR;
-        }
-    } else {
-        currentAvatar = PLAYER_COLOR;
-        currentBullet = BULLET_COLOR;
-    }
-    playerSkin.avatar = currentAvatar;
-    playerSkin.bullet = currentBullet;
+    currentMap = getRandomMap(canvas.width, canvas.height);
+    const metaRaw = localStorage.getItem("user_" + username);
+    
+    let avatarId = "default";
+    let bulletId = "default";
 
+    if (metaRaw) {
+        const meta = JSON.parse(metaRaw);
+        avatarId = meta.currentAvatar || "default";
+        bulletId = meta.currentBullet || "default";
+    }
+    
+    const avatarSkinData = AVATAR_SKINS[avatarId] || AVATAR_SKINS.default;
+    const bulletSkinData = BULLET_SKINS[bulletId] || BULLET_SKINS.default;
+
+    playerSkin.avatar = avatarSkinData.color;
+    playerSkin.bullet = bulletSkinData.color;
+    
     let playerStartX, playerStartY, botStartX, botStartY;
     do {
         playerStartX = Math.floor(Math.random() * (currentMap.layout[0].length - 2) + 1) * CELL_SIZE + CELL_SIZE / 2;
@@ -172,7 +153,7 @@ export function initGame(username, canvasEl) {
     bots.push(new Bot("Bot 1", botStartX, botStartY));
 }
 
-// 5. EXPORT hàm cập nhật
+// 5. EXPORT hàm cập nhật (updateGame)
 export function updateGame(delta, keys) {
     if (gameOver) return;
     if (!player || !player.alive) {
@@ -180,13 +161,11 @@ export function updateGame(delta, keys) {
         return;
     }
 
-    // === LOGIC TỐC ĐỘ CỦA PLAYER ===
     let speedModifier = 1; 
     const playerCellType = getMapCellType(player.x, player.y, currentMap);
     if (playerCellType === 3) {
-        speedModifier = 0.5; // Giảm 50% tốc độ
+        speedModifier = 0.5;
     }
-    // =============================
 
     // --- 1. Cập nhật di chuyển người chơi ---
     let dx = 0, dy = 0;
@@ -201,14 +180,12 @@ export function updateGame(delta, keys) {
         player.dirX = dx;
         player.dirY = dy;
         
-        // Áp dụng tốc độ đã điều chỉnh
         const moveX = dx * PLAYER_SPEED * speedModifier;
         const moveY = dy * PLAYER_SPEED * speedModifier;
         
         const nextX = player.x + moveX;
         const nextY = player.y + moveY;
 
-        // Va chạm biên Player
         const newPlayerX = Math.max(PLAYER_RADIUS, Math.min(canvas.width - PLAYER_RADIUS, nextX));
         if (!isBlocked(newPlayerX + (dx > 0 ? PLAYER_RADIUS : -PLAYER_RADIUS), player.y, currentMap)) {
              player.x = newPlayerX;
@@ -242,44 +219,34 @@ export function updateGame(delta, keys) {
         b.y += b.vy * BULLET_SPEED;
         let bounced = false;
 
-        // === LOGIC VA CHẠM TƯỜNG CỦA ĐẠN (Đã sửa) ===
         const c = Math.floor(b.x / CELL_SIZE);
         const r = Math.floor(b.y / CELL_SIZE);
         
-        // Cần kiểm tra r và c có hợp lệ không
         if (!currentMap.layout[r] || currentMap.layout[r][c] === undefined) {
-             // Va chạm biên (logic cũ sẽ xử lý)
+             // Va chạm biên
         } else {
              const cellValue = currentMap.layout[r][c];
             
              if (cellValue === 1) { 
-                // Tường CỨNG (1): Đạn nảy
                 b.vx *= -1; 
                 b.vy *= -1; 
                 bounced = true; 
-             } else if (cellValue === 5 || cellValue === 4) { // **ĐÃ SỬA: Kiểm tra 5 (HP=2) hoặc 4 (HP=1)**
-                // Tường PHÁ HỦY (5 hoặc 4): Giảm độ bền
-                currentMap.layout[r][c] -= 1; // Giảm độ bền đi 1
-                
+             } else if (cellValue === 5 || cellValue === 4) { 
+                currentMap.layout[r][c] -= 1; 
                 if (currentMap.layout[r][c] <= 0) {
-                    // Bị phá hủy hoàn toàn
-                    currentMap.layout[r][c] = 0; // Biến ô thành không gian trống
+                    currentMap.layout[r][c] = 0;
                 }
-                
-                b.remove = true; // Xóa viên đạn (luôn bị xóa sau khi bắn tường)
+                b.remove = true;
                 bounced = false; 
              }
         }
-        // ===========================================
 
-        // Va chạm biên Canvas (giữ nguyên)
         if (b.x <= 0 || b.x >= canvas.width) { b.vx *= -1; bounced = true; }
         if (b.y <= 0 || b.y >= canvas.height) { b.vy *= -1; bounced = true; }
         
         if (bounced) b.bounceCount++;
         if (b.bounceCount > MAX_BULLET_BOUNCE) b.remove = true;
 
-        // Va chạm Đạn với Player (Tự sát)
         if (player.alive) { 
             const dist = Math.hypot(b.x - player.x, b.y - player.y);
             if (dist < PLAYER_RADIUS + BULLET_RADIUS) {
@@ -289,7 +256,6 @@ export function updateGame(delta, keys) {
             }
         }
         
-        // Va chạm Đạn với Bot
         bots.forEach(bot => {
             if (bot.alive && b.owner !== bot) { 
                 const dist = Math.hypot(b.x - bot.x, b.y - bot.y);
