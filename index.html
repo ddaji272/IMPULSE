@@ -8,7 +8,6 @@
   <link rel="stylesheet" href="css/effects.css" />
 </head>
 <body>
-  <!-- ========== Trước khi đăng nhập ========== -->
   <div id="home" class="menu-container">
     <h1 class="title">⚡ IMPULSE ⚡</h1>
 
@@ -37,15 +36,10 @@
     </div>
   </div>
 
-  <!-- ========== Sau khi đăng nhập ========== -->
   <div id="menu" class="menu-container hidden">
     <div class="menu-top">
       <h1 class="title">⚡ IMPULSE ⚡</h1>
-      <div class="wallet">
-        <span class="coin">🪙</span>
-        <span id="goldAmount">0</span>
       </div>
-    </div>
 
     <p id="welcomeMsg">Chào mừng <span id="userDisplay">User</span> đã trở lại!</p>
 
@@ -71,10 +65,8 @@
     </div>
   </div>
 
-  <!-- Canvas game -->
   <canvas id="gameCanvas" style="display:none;"></canvas>
 
-  <!-- Popup hướng dẫn -->
   <div id="guidePopup" class="popup hidden">
     <div class="popup-content">
       <h2>📘 Hướng dẫn</h2>
@@ -88,7 +80,6 @@
     </div>
   </div>
 
-  <!-- Popup leaderboard -->
   <div id="leaderboardPopup" class="popup hidden">
     <div class="popup-content">
       <h2>🏆 Leaderboard</h2>
@@ -97,10 +88,14 @@
     </div>
   </div>
 
-  <!-- Popup shop -->
   <div id="shopPopup" class="popup hidden">
     <div class="popup-content shop-content">
       <h2 id="shopTitle">Kho</h2>
+
+      <div class="wallet">
+        <span class="coin">🪙</span>
+        <span id="goldAmount">0</span>
+      </div>
       <div class="shop-columns">
         <div class="col">
           <h3>Đã có</h3>
@@ -115,7 +110,6 @@
     </div>
   </div>
 
-  <!-- Scripts -->
   <script type="module" src="js/config.js"></script>
   <script type="module" src="js/game.js"></script>
   <script type="module" src="js/render.js"></script>
