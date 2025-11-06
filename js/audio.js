@@ -1,13 +1,14 @@
 // js/audio.js
 
-// --- PHẦN BẠN BỊ THIẾU ---
 const audioMap = {};
 let backgroundMusic = null;
 let isMusicStarted = false;
-// ------------------------
+
+// === BIẾN ĐIỀU KHIỂN ÂM LƯỢNG ===
+let isMusicMuted = false;
+let isSfxMuted = false;
 
 // Danh sách các âm thanh cần tải
-// (Đã sửa đường dẫn theo đúng cấu trúc thư mục của bạn)
 const SOUND_LIST = {
     // Sound Effects
     button_click: 'assets/sound-effects/button_click.wav',
@@ -19,8 +20,8 @@ const SOUND_LIST = {
     defeated: 'assets/sound-effects/defeated.wav',
     victory: 'assets/sound-effects/victory.wav',
     
-    // Music (Tải riêng)
-    music: 'assets/audio/nhac-nen.mp3' // Đảm bảo bạn đã đổi tên file này (bỏ dấu)
+    // Music
+    music: 'assets/audio/nhac-nen.mp3'
 };
 
 /**
@@ -29,22 +30,23 @@ const SOUND_LIST = {
 export function preloadAudio() {
     console.log("Đang tải các file âm thanh...");
     for (const key in SOUND_LIST) {
-        if (key === 'music') continue; // Bỏ qua nhạc nền
+        if (key === 'music') continue; 
         
         const audio = new Audio(SOUND_LIST[key]);
         audio.preload = 'auto';
-        audioMap[key] = audio; // Dòng này sẽ hết lỗi vì audioMap đã được định nghĩa
+        audioMap[key] = audio;
     }
 }
 
 /**
  * Phát một hiệu ứng âm thanh (SFX)
- * @param {string} key Tên của âm thanh (ví dụ: 'shoot')
  */
 export function playSound(key) {
+    // === SỬA: Chỉ phát nếu SFX không bị tắt ===
+    if (isSfxMuted) return; 
+
     const audio = audioMap[key];
     if (audio) {
-        // Tạm dừng và tua về 0 nếu âm thanh đang phát
         audio.currentTime = 0;
         audio.play().catch(e => console.warn(`Lỗi phát âm thanh: ${key}`, e));
     } else {
@@ -56,12 +58,18 @@ export function playSound(key) {
  * Khởi tạo và bắt đầu phát nhạc nền (chỉ chạy 1 lần)
  */
 export function startMusic() {
-    if (isMusicStarted) return; // Không chạy lại nếu đã chạy rồi
+    if (isMusicStarted) return;
+    
+    // === SỬA: Không khởi động nhạc nếu đang bị tắt ===
+    if (isMusicMuted) {
+        console.log("Nhạc nền đang bị tắt, sẽ không tự động phát.");
+        return; 
+    }
     
     console.log("Khởi động nhạc nền...");
     backgroundMusic = new Audio(SOUND_LIST.music);
-    backgroundMusic.loop = true; // Lặp lại vô tận
-    backgroundMusic.volume = 0.3; // Giảm âm lượng nhạc nền
+    backgroundMusic.loop = true;
+    backgroundMusic.volume = 0.3;
     
     backgroundMusic.play().then(() => {
         isMusicStarted = true;
@@ -69,4 +77,32 @@ export function startMusic() {
     }).catch(e => {
         console.error("Lỗi tự động phát nhạc (chờ người dùng click):", e);
     });
+}
+
+// === HÀM MỚI: Bật/Tắt Nhạc Nền ===
+export function toggleMusic() {
+    isMusicMuted = !isMusicMuted;
+    
+    if (isMusicMuted) {
+        if (backgroundMusic && isMusicStarted) {
+            backgroundMusic.pause();
+        }
+        console.log("Đã TẮT nhạc nền.");
+    } else {
+        if (backgroundMusic && isMusicStarted) {
+            backgroundMusic.play();
+        } else if (!isMusicStarted) {
+            // Nếu nhạc chưa bao giờ bắt đầu, hãy thử bắt đầu ngay
+            startMusic();
+        }
+        console.log("Đã BẬT nhạc nền.");
+    }
+    return isMusicMuted; // Trả về trạng thái mới
+}
+
+// === HÀM MỚI: Bật/Tắt Hiệu Ứng ===
+export function toggleSfx() {
+    isSfxMuted = !isSfxMuted;
+    console.log(isSfxMuted ? "Đã TẮT hiệu ứng." : "Đã BẬT hiệu ứng.");
+    return isSfxMuted; // Trả về trạng thái mới
 }
