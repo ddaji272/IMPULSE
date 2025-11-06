@@ -70,7 +70,7 @@
     background-color: #333;
     color: #aaa;
     box-shadow: none; /* Bỏ shadow */
-}
+}   
 .popup-content button.closeBtn:hover {
     background-color: #444;
     color: white;
