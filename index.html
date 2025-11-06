@@ -8,6 +8,11 @@
   <link rel="stylesheet" href="css/effects.css" />
 </head>
 <body>
+
+  <video id="background-video" loop muted autoplay playsinline>
+      <source src="assets/background/wallpaper.mp4" type="video/mp4">
+  </video>
+
   <div id="home" class="menu-container">
     <h1 class="title">⚡ IMPULSE ⚡</h1>
 
@@ -39,7 +44,7 @@
   <div id="menu" class="menu-container hidden">
     <div class="menu-top">
       <h1 class="title">⚡ IMPULSE ⚡</h1>
-      </div>
+    </div>
 
     <p id="welcomeMsg">Chào mừng <span id="userDisplay">User</span> đã trở lại!</p>
 
@@ -96,6 +101,7 @@
         <span class="coin">🪙</span>
         <span id="goldAmount">0</span>
       </div>
+
       <div class="shop-columns">
         <div class="col">
           <h3>Đã có</h3>
@@ -115,6 +121,9 @@
   <script type="module" src="js/render.js"></script>
   <script type="module" src="js/input.js"></script>
   <script type="module" src="js/ui.js"></script>
+  
+  <script type="module" src="js/audio.js"></script>
+  
   <script type="module" src="js/main.js"></script>
 </body>
 </html>
