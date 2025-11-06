@@ -11,8 +11,7 @@
 body {
   margin: 0;
   font-family: 'Poppins', sans-serif;
-  background: url('../assets/hinh-nen.jpg') no-repeat center center;
-  background-size: cover;
+  /* DÒNG BACKGROUND CŨ ĐÃ BỊ XÓA BỎ */
   color: white;
   min-height: 100vh;
   display: flex;
@@ -126,6 +125,12 @@ button:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(0,255,2
 .menu-buttons { display:flex; justify-content:center; gap:12px; flex-wrap:wrap; }
 .menu-buttons.center { margin: 8px 0; }
 
+/* === PHẦN SỬA LỖI 2 TAB === */
+.hidden {
+    display: none;
+}
+/* ========================== */
+
 /* popup */
 .popup { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display:flex; justify-content:center; align-items:center; z-index:999; }
 .popup.hidden { display:none; }
@@ -143,4 +148,22 @@ button:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(0,255,2
   .menu-container { padding:20px; max-width:320px; }
   .shop-columns { flex-direction:column; }
   .shop-columns .col { width:100%; }
+}
+
+/* ------------------------------ */
+/* Background Video Style */
+/* ------------------------------ */
+#background-video {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    min-width: 100%;
+    min-height: 100%;
+    width: auto;
+    height: auto;
+    z-index: -100; /* Đặt video dưới cùng */
+    background-size: cover;
+    
+    /* Điều chỉnh độ mờ/sáng của video tại đây */
+    opacity: 1; 
 }
