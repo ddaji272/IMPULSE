@@ -99,10 +99,6 @@ document.addEventListener("DOMContentLoaded", () => {
             goToMenu();
         }
     });
-    
-    // XÓA: Toàn bộ hàm handleFirstClick và 2 EventListener bên dưới
-    // (Đây chính là phần gây lỗi của bạn)
-
     // === 7. LOGIC CHO NÚT ÂM LƯỢNG (Giữ nguyên) ===
     const musicBtn = document.getElementById("musicToggleBtn");
     const sfxBtn = document.getElementById("sfxToggleBtn");
@@ -133,3 +129,4 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 });
+
