@@ -203,11 +203,11 @@ export function updateGame(delta, keys) {
 
         const newPlayerX = Math.max(PLAYER_RADIUS, Math.min(canvas.width - PLAYER_RADIUS, nextX));
         if (!isBlocked(newPlayerX + (dx > 0 ? PLAYER_RADIUS : -PLAYER_RADIUS), player.y, currentMap)) {
-             player.x = newPlayerX;
+            player.x = newPlayerX;
         }
         const newPlayerY = Math.max(PLAYER_RADIUS, Math.min(canvas.height - PLAYER_RADIUS, nextY));
         if (!isBlocked(player.x, newPlayerY + (dy > 0 ? PLAYER_RADIUS : -PLAYER_RADIUS), currentMap)) {
-             player.y = newPlayerY;
+            player.y = newPlayerY;
         }
     }
     
@@ -244,12 +244,52 @@ export function updateGame(delta, keys) {
         } else {
             const cellValue = currentMap.layout[r][c];
             
+            // ===========================================
+            // === KHỐI CODE ĐÃ SỬA LOGIC NẢY ĐẠN ===
+            // ===========================================
             if (cellValue === 1) { 
-                // Tường cứng
-                b.vx *= -1; 
-                b.vy *= -1; 
+                // Tường cứng - LOGIC NẨY ĐẠN ĐÃ SỬA
+                playSound('bounced');
                 bounced = true; 
-                playSound('bounced'); // <-- ÂM THANH DỘI TƯỜNG
+
+                // 1. Tính toán vị trí-ô của frame TRƯỚC khi va chạm
+                const prevX = b.x - b.vx * BULLET_SPEED;
+                const prevY = b.y - b.vy * BULLET_SPEED;
+                const prevC = Math.floor(prevX / CELL_SIZE);
+                const prevR = Math.floor(prevY / CELL_SIZE);
+
+                // 2. Đẩy viên đạn ra khỏi tường (quan trọng để tránh bị kẹt)
+                // Bằng cách "hoàn tác" lại bước di chuyển cuối cùng
+                b.x = prevX;
+                b.y = prevY;
+
+                // 3. Kiểm tra xem đạn va vào cạnh ngang hay cạnh dọc của ô
+                let hitVertical = false;
+                let hitHorizontal = false;
+
+                // Nếu ô-cột (column) thay đổi -> va vào cạnh DỌC
+                if (c !== prevC) {
+                    hitVertical = true;
+                }
+                // Nếu ô-hàng (row) thay đổi -> va vào cạnh NGANG
+                if (r !== prevR) {
+                    hitHorizontal = true;
+                }
+
+                // 4. Xử lý nảy đạn
+                if (hitVertical) {
+                    b.vx *= -1; // Đổi hướng X
+                }
+                if (hitHorizontal) {
+                    b.vy *= -1; // Đổi hướng Y
+                }
+
+                // 5. Trường hợp dự phòng: Nếu đạn bay trúng GÓC
+                // hoặc nếu nó không phát hiện được (bị kẹt), thì đảo ngược cả 2
+                if (!hitVertical && !hitHorizontal) {
+                    b.vx *= -1; 
+                    b.vy *= -1;
+                }
             } else if (cellValue === 5 || cellValue === 4) { 
                 // Tường vỡ
                 playSound('wall_crack'); // <-- ÂM THANH TƯỜNG NỨT
@@ -260,6 +300,9 @@ export function updateGame(delta, keys) {
                 b.remove = true;
                 bounced = false; 
             }
+            // ===========================================
+            // === KẾT THÚC KHỐI CODE SỬA ===
+            // ===========================================
         }
 
         // Va chạm biên Canvas
@@ -311,7 +354,7 @@ export function updateGame(delta, keys) {
             botX = Math.floor(Math.random() * (currentMap.layout[0].length - 2) + 1) * CELL_SIZE + CELL_SIZE / 2;
             botY = Math.floor(Math.random() * (currentMap.layout.length - 2) + 1) * CELL_SIZE + CELL_SIZE / 2;
         } while (isBlocked(botX, botY, currentMap) || 
-                     (player && Math.hypot(player.x - botX, player.y - botY) < CELL_SIZE * 5)); 
+                   (player && Math.hypot(player.x - botX, player.y - botY) < CELL_SIZE * 5)); 
 
         bots.push(new Bot("Bot " + (score + 1), botX, botY));
     }
