@@ -4,7 +4,7 @@ import { setupInput, keys } from "./input.js";
 import { setupUI } from "./ui.js";
 import { initCanvas, draw, drawGameOver, replayButton, homeButton } from "./render.js";
 import { initGame, updateGame, gameOver, player, gameOverSoundPlayed } from "./game.js";
-// === SỬA: Thêm import cho hàm toggle ===
+// === SỬA: Thêm import cho hàm toggle và startMusic ===
 import { preloadAudio, startMusic, playSound, toggleMusic, toggleSfx } from "./audio.js";
 
 const canvasEl = document.getElementById("gameCanvas");
@@ -13,7 +13,7 @@ const menuEl = document.getElementById("menu");
 
 let lastTime = 0;
 let animationFrameId = null;
-let isFirstClick = true; 
+// XÓA: let isFirstClick = true; 
 
 function gameLoop(now) {
     const delta = now - lastTime;
@@ -25,14 +25,17 @@ function gameLoop(now) {
     if (gameOver) {
         drawGameOver(); 
         cancelAnimationFrame(animationFrameId); 
-        
-        // (Logic âm thanh 'defeated' đã được chuyển vào game.js)
     } else {
         animationFrameId = requestAnimationFrame(gameLoop);
     }
 }
 
 function startGame(playerName) {
+    // === THÊM DÒNG NÀY ĐỂ KHỞI ĐỘNG NHẠC ===
+    // (An toàn, vì startMusic() chỉ chạy 1 lần duy nhất)
+    startMusic(); 
+    // =======================================
+
     homeEl.style.display = "none";
     menuEl.style.display = "none";
     canvasEl.style.display = "block";
@@ -75,10 +78,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 5. Xử lý click trên Canvas
     canvasEl.addEventListener("click", (e) => {
-        if (isFirstClick) {
-            startMusic();
-            isFirstClick = false;
-        }
+        // XÓA: Logic isFirstClick
         
         if (!gameOver) return; 
         
@@ -89,31 +89,21 @@ document.addEventListener("DOMContentLoaded", () => {
         if (mx >= replayButton.x && mx <= replayButton.x + replayButton.w &&
             my >= replayButton.y && my <= replayButton.y + replayButton.h) {
             
-            playSound('button_click'); // <-- Thêm âm thanh click
+            playSound('button_click'); 
             startGame(player.name);
         }
 
         if (mx >= homeButton.x && mx <= homeButton.x + homeButton.w &&
             my >= homeButton.y && my <= homeButton.y + homeButton.h) {
             
-            playSound('button_click'); // <-- Thêm âm thanh click
+            playSound('button_click'); 
             goToMenu();
         }
     });
     
-    // 6. SỰ KIỆN CLICK TOÀN CỤC ĐỂ BẮT ĐẦU NHẠC
-    function handleFirstClick() {
-        if (isFirstClick) {
-            startMusic();
-            isFirstClick = false;
-            document.removeEventListener('click', handleFirstClick);
-            document.removeEventListener('keydown', handleFirstClick);
-        }
-    }
-    document.addEventListener('click', handleFirstClick);
-    document.addEventListener('keydown', handleFirstClick);
+    // XÓA: Toàn bộ hàm handleFirstClick và 2 EventListener bên dưới
 
-    // === 7. THÊM LOGIC CHO NÚT ÂM LƯỢNG ===
+    // === 7. LOGIC CHO NÚT ÂM LƯỢNG (Giữ nguyên) ===
     const musicBtn = document.getElementById("musicToggleBtn");
     const sfxBtn = document.getElementById("sfxToggleBtn");
 
@@ -121,10 +111,10 @@ document.addEventListener("DOMContentLoaded", () => {
         musicBtn.addEventListener("click", () => {
             const isMuted = toggleMusic();
             if (isMuted) {
-                musicBtn.textContent = "🔇"; // Biểu tượng Tắt nhạc
+                musicBtn.textContent = "🔇"; 
                 musicBtn.title = "Bật nhạc nền";
             } else {
-                musicBtn.textContent = "🎵"; // Biểu tượng Bật nhạc
+                musicBtn.textContent = "🎵"; 
                 musicBtn.title = "Tắt nhạc nền";
             }
         });
@@ -134,10 +124,10 @@ document.addEventListener("DOMContentLoaded", () => {
         sfxBtn.addEventListener("click", () => {
             const isMuted = toggleSfx();
             if (isMuted) {
-                sfxBtn.textContent = "🔇"; // Biểu tượng Tắt hiệu ứng
+                sfxBtn.textContent = "🔇"; 
                 sfxBtn.title = "Bật hiệu ứng";
             } else {
-                sfxBtn.textContent = "🔊"; // Biểu tượng Bật hiệu ứng
+                sfxBtn.textContent = "🔊"; 
                 sfxBtn.title = "Tắt hiệu ứng";
             }
         });
