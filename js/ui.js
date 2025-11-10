@@ -1,5 +1,6 @@
-// js/ui.js (Phiên bản HOÀN CHỈNH)
+// js/ui.js
 import { playSound } from "./audio.js";
+import { startMusic } from "./audio.js";
 // IMPORT skins.js
 import { AVATAR_SKINS, BULLET_SKINS } from "./skins.js";
 
@@ -50,6 +51,7 @@ export function setupUI(startGameCallback) {
     // Nút "Bắt đầu chơi (Demo)"
     if (playBtn) {
         playBtn.addEventListener("click", () => {
+            startMusic(); // <-- THÊM DÒNG NÀY
             playSound('button_click');
             const name = displayName.value.trim() || "Guest";
             if (!name) {
@@ -67,6 +69,8 @@ export function setupUI(startGameCallback) {
     // Nút "VÀO GAME" (sau khi đăng nhập)
     if (menuPlayBtn) {
         menuPlayBtn.addEventListener("click", () => {
+            // (Không cần thêm startMusic() ở đây,
+            // vì người dùng đã click "Đăng nhập" trước đó rồi)
             playSound('button_click');
             const loggedUser = userDisplay.textContent || "Player";
             const confirmDemo = confirm("Chế độ LAN chưa triển khai. Chơi demo local?");
@@ -80,6 +84,7 @@ export function setupUI(startGameCallback) {
     // Đăng ký
     if (registerBtn) {
         registerBtn.addEventListener("click", () => {
+            startMusic(); // <-- THÊM DÒNG NÀY
             playSound('button_click');
             const user = usernameInput.value.trim();
             const pass = passwordInput.value.trim();
@@ -102,6 +107,7 @@ export function setupUI(startGameCallback) {
     // Đăng nhập
     if (loginBtn) {
         loginBtn.addEventListener("click", () => {
+            startMusic(); // <-- THÊM DÒNG NÀY
             playSound('button_click');
             const user = usernameInput.value.trim();
             const pass = passwordInput.value.trim();
