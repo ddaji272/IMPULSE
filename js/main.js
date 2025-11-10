@@ -1,4 +1,4 @@
-// js/main.js
+// js/main.js (PHIÊN BẢN ĐÃ DỌN DẸP)
 
 import { setupInput, keys } from "./input.js";
 import { setupUI } from "./ui.js";
@@ -31,10 +31,9 @@ function gameLoop(now) {
 }
 
 function startGame(playerName) {
-    // === THÊM DÒNG NÀY ĐỂ KHỞI ĐỘNG NHẠC ===
-    // (An toàn, vì startMusic() chỉ chạy 1 lần duy nhất)
-    startMusic(); 
-    // =======================================
+    // === Logic nhạc nền sẽ được gọi từ ui.js ===
+    // (Hoặc chúng ta cũng có thể gọi startMusic() an toàn ở đây)
+    startMusic(); // Gọi ở đây cũng tốt, vì nó chỉ chạy sau khi click "Vào Game"
 
     homeEl.style.display = "none";
     menuEl.style.display = "none";
@@ -67,7 +66,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // 1. TẢI TRƯỚC ÂM THANH
     preloadAudio();
 
-    // 2. Khởi tạo UI
+    // 2. Khởi tạo UI (Nó sẽ gán sự kiện click cho các nút)
     setupUI(startGame);
     
     // 3. Khởi tạo Input
@@ -102,6 +101,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     
     // XÓA: Toàn bộ hàm handleFirstClick và 2 EventListener bên dưới
+    // (Đây chính là phần gây lỗi của bạn)
 
     // === 7. LOGIC CHO NÚT ÂM LƯỢNG (Giữ nguyên) ===
     const musicBtn = document.getElementById("musicToggleBtn");
