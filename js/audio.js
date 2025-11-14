@@ -24,17 +24,42 @@ const SOUND_LIST = {
     music: 'assets/audio/nhac-nen.mp3'
 };
 
-/**
- * Tải trước tất cả các hiệu ứng âm thanh (SFX)
- */
-export function preloadAudio() {
+
+export async function preloadAudio() {
     console.log("Đang tải các file âm thanh...");
+    const audioPromises = []; // Tạo một mảng để chứa các Promise
+
     for (const key in SOUND_LIST) {
-        if (key === 'music') continue; 
-        
-        const audio = new Audio(SOUND_LIST[key]);
-        audio.preload = 'auto';
-        audioMap[key] = audio;
+        if (key === 'music') continue; // Vẫn bỏ qua nhạc nền
+
+        const promise = new Promise((resolve, reject) => {
+            const audio = new Audio(SOUND_LIST[key]);
+            
+            // 'canplaythrough' là sự kiện đảm bảo audio đã được tải đủ
+            audio.addEventListener('canplaythrough', () => {
+                audioMap[key] = audio;
+                // console.log(`Tải audio thành công: ${key}`); // Bỏ comment nếu muốn test
+                resolve(); // Báo cho Promise là đã xong
+            });
+
+            audio.addEventListener('error', (e) => {
+                console.error(`Lỗi tải audio: ${key}`, e);
+                reject(new Error(`Lỗi tải ${key}`));
+            });
+
+            // Yêu cầu trình duyệt bắt đầu tải
+            audio.load(); 
+        });
+
+        audioPromises.push(promise);
+    }
+
+    // Chờ cho TẤT CẢ các promise âm thanh hoàn tất
+    try {
+        await Promise.all(audioPromises);
+        console.log("Tải âm thanh hoàn tất!");
+    } catch (error) {
+        console.error("Đã xảy ra lỗi trong quá trình tải âm thanh.", error);
     }
 }
 
