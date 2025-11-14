@@ -3,7 +3,7 @@
 // ========== Cấu hình game ==========
 
 // Tốc độ di chuyển của người chơi
-export const PLAYER_SPEED = 5;
+export const PLAYER_SPEED = 300;
 
 // === DÒNG MỚI THÊM VÀO ===
 // Tốc độ xoay của người chơi (số radian xoay mỗi giây)
@@ -12,16 +12,13 @@ export const PLAYER_ROTATION_SPEED = 3.5;
 // ==========================
 
 // Tốc độ bay của đạn
-export const BULLET_SPEED = 10;
+export const BULLET_SPEED = 600;
 
 // Thời gian hồi chiêu giữa các lần bắn (ms)
 export const SHOOT_COOLDOWN = 1000;
 
 // Màu nền canvas
 export const CANVAS_BG_COLOR = "#0d1117";
-
-// Màu người chơi
-export const PLAYER_COLOR = "cyan";
 
 // Màu đạn
 export const BULLET_COLOR = "yellow";
