@@ -1,0 +1,117 @@
+/* css/touch-controls.css
+  File CSS mới cho các nút bấm cảm ứng
+*/
+
+#touchControls {
+  /* Dùng visibility/opacity thay vì display:none
+    để các sự kiện 'touchstart' được gán ngay từ đầu.
+  */
+  visibility: hidden; 
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+  
+  /* Đảm bảo nó nằm trên canvas và chiếm toàn màn hình */
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 100;
+  
+  /* Rất quan trọng: cho phép click "xuyên qua" container */
+  pointer-events: none; 
+}
+
+/* Class 'visible' sẽ được JS thêm vào */
+#touchControls.visible {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* --- Cấu hình các nút bấm --- */
+#touchControls button {
+  position: absolute; /* Định vị tuyệt đối so với #touchControls */
+  background-color: rgba(128, 128, 128, 0.4);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  border-radius: 50%; /* Nút tròn */
+  font-size: 24px;
+  color: white;
+  
+  /* Ngăn các hành vi cảm ứng mặc định (zoom, double-tap) */
+  touch-action: manipulation; 
+  user-select: none;
+  -webkit-user-select: none;
+  
+  /* Rất quan trọng: chỉ cho phép click vào NÚT, không phải container */
+  pointer-events: auto; 
+}
+
+/* Khi người dùng nhấn giữ nút */
+#touchControls button:active {
+  background-color: rgba(0, 255, 255, 0.5);
+  border-color: #00ffff;
+  transform: scale(0.95);
+}
+
+/* === D-Pad (Cụm phím di chuyển bên trái) === */
+#touchDpad {
+  position: absolute;
+  left: 5vw;  /* Cách lề trái 5% */
+  bottom: 10vh; /* Cách lề dưới 10% */
+  width: 150px;
+  height: 150px;
+  /* (Container này không nhận click) */
+  pointer-events: none; 
+}
+
+/* Sắp xếp 4 nút trong D-Pad */
+#touchDpad button {
+  pointer-events: auto; /* Cho phép click vào các nút này */
+  width: 50px;
+  height: 50px;
+}
+#touchUp {
+  top: 0;
+  left: 50px;
+}
+#touchDown {
+  bottom: 0;
+  left: 50px;
+}
+#touchLeft {
+  top: 50px;
+  left: 0;
+}
+#touchRight {
+  top: 50px;
+  right: 0;
+}
+
+/* === Nút Bắn (Bên phải) === */
+#touchActions {
+  position: absolute;
+  right: 5vw; /* Cách lề phải 5% */
+  bottom: 10vh; /* Cách lề dưới 10% */
+  width: 120px;
+  height: 120px;
+  pointer-events: none;
+}
+
+#touchShoot {
+  pointer-events: auto;
+  width: 100px; /* Nút to hơn */
+  height: 100px;
+  font-size: 40px;
+  position: absolute; /* Căn nút bắn vào trong #touchActions */
+  right: 0;
+  bottom: 0;
+  
+  /* Style riêng cho nút bắn */
+  border-color: rgba(255, 0, 92, 0.7);
+  background-color: rgba(255, 0, 92, 0.4);
+}
+
+#touchShoot:active {
+  background-color: rgba(255, 0, 92, 0.6);
+  border-color: #ff005c;
+}
