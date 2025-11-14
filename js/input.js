@@ -1,38 +1,47 @@
 // js/input.js
 
-// Biến lưu trữ trạng thái phím
+// Biến lưu trữ trạng thái phím (dùng event.code)
 export const keys = {};
 
 /**
  * Xử lý khi nhấn phím (keydown)
  */
 function handleKeyDown(event) {
-    const key = event.key.toLowerCase();
-    
-    // Ngăn chặn hành vi mặc định của trình duyệt với phím cách và phím mũi tên
-    if (key === ' ' || key.includes("arrow")) {
-        event.preventDefault(); 
+    const code = event.code; // <-- Dùng event.code (ví dụ: "KeyW", "Space")
+    keys[code] = true;
+
+    // Ngăn chặn hành vi mặc định (cuộn trang)
+    // Đây là phần sửa lỗi "dừng game"
+    if (code === 'Space' || code.includes('Arrow')) {
+        event.preventDefault();
     }
-    
-    // Đánh dấu phím này là đang được nhấn
-    keys[key] = true;
 }
 
 /**
  * Xử lý khi nhả phím (keyup)
  */
 function handleKeyUp(event) {
-    const key = event.key.toLowerCase();
-    
-    // Đánh dấu phím này là đã được nhả ra
-    keys[key] = false;
+    const code = event.code;
+    keys[code] = false;
+}
+
+/**
+ * Xử lý khi cửa sổ bị mất focus (click ra ngoài)
+ * Đây là phần sửa lỗi "dính phím"
+ */
+function handleBlur() {
+    // Reset tất cả các phím về 'false'
+    Object.keys(keys).forEach(code => {
+        keys[code] = false;
+    });
 }
 
 /**
  * Thiết lập các Event Listener
- * (Sẽ được gọi 1 lần duy nhất bởi main.js)
  */
 export function setupInput() {
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
+    // Thêm listener cho "blur"
+    window.addEventListener("blur", handleBlur);
 }
