@@ -1,34 +1,33 @@
-// js/game.js
-
 // 1. IMPORT
 import {
-    PLAYER_SPEED, BULLET_SPEED, SHOOT_COOLDOWN, PLAYER_RADIUS, 
-    BULLET_RADIUS, MAX_BULLET_BOUNCE, PLAYER_COLOR, BULLET_COLOR
+    PLAYER_SPEED, BULLET_SPEED, SHOOT_COOLDOWN, PLAYER_RADIUS,
+    BULLET_RADIUS, MAX_BULLET_BOUNCE, PLAYER_COLOR, BULLET_COLOR,
+    PLAYER_ROTATION_SPEED
 } from "./config.js";
 
 import { getRandomMap, isBlocked, CELL_SIZE, getMapCellType } from "./maps.js";
 import { AVATAR_SKINS, BULLET_SKINS } from "./skins.js";
-
-// THÊM IMPORT ÂM THANH
 import { playSound } from "./audio.js";
 
 
-// 2. EXPORT các Lớp (Class)
+// 2. EXPORT CÁC LỚP
 export class Player {
-    // ... (Không thay đổi) ...
-    constructor(name, x, y, isLocal = true) {
+    constructor(name, x, y, skinData, isLocal = true) {
         this.name = name;
         this.x = x;
         this.y = y;
-        this.dirX = 0;
-        this.dirY = -1;
+        this.skin = skinData;
+
+        this.angle = -Math.PI / 2;
+        this.dirX = Math.cos(this.angle);
+        this.dirY = Math.sin(this.angle);
+
         this.alive = true;
         this.isLocal = isLocal;
     }
 }
 
 export class Bullet {
-    // ... (Không thay đổi) ...
     constructor(x, y, vx, vy, owner = null) {
         this.x = x;
         this.y = y;
@@ -41,8 +40,8 @@ export class Bullet {
 }
 
 export class Bot extends Player {
-    constructor(name, x, y) {
-        super(name, x, y, false); 
+    constructor(name, x, y, skinData) {
+        super(name, x, y, skinData, false);
         this.vx = 0;
         this.vy = 0;
         this.shootTimer = 0;
@@ -52,8 +51,10 @@ export class Bot extends Player {
     update(delta, player, bullets) {
         if (!this.alive) return;
 
-        // ... (Logic di chuyển của Bot không thay đổi) ...
-        let speedModifier = 1; 
+        // Kích thước HỘP VA CHẠM (bằng 1/2 kích thước vẽ)
+        const PLAYER_BOX_HALF = PLAYER_RADIUS * 1.25;
+
+        let speedModifier = 1;
         const botCellType = getMapCellType(this.x, this.y, currentMap);
         if (botCellType === 3) {
             speedModifier = 0.5;
@@ -71,70 +72,97 @@ export class Bot extends Player {
                 this.vx = (Math.random() * 2 - 1);
                 this.vy = (Math.random() * 2 - 1);
             }
+
+            const aimLen = Math.hypot(this.vx, this.vy);
+            if (aimLen > 0) {
+                this.dirX = this.vx / aimLen;
+                this.dirY = this.vy / aimLen;
+            }
         }
-        const nextX = this.x + this.vx * PLAYER_SPEED * 0.8 * speedModifier; 
-        const nextY = this.y + this.vy * PLAYER_SPEED * 0.8 * speedModifier;
-        const newBotX = Math.max(PLAYER_RADIUS, Math.min(canvas.width - PLAYER_RADIUS, nextX));
-        if (!isBlocked(newBotX + (this.vx > 0 ? PLAYER_RADIUS : -PLAYER_RADIUS), this.y, currentMap)) {
-            this.x = newBotX;
+
+        const moveX = this.vx * PLAYER_SPEED * 0.8 * speedModifier;
+        const moveY = this.vy * PLAYER_SPEED * 0.8 * speedModifier;
+
+        let nextX = this.x + moveX;
+        nextX = Math.max(PLAYER_BOX_HALF, Math.min(canvas.width - PLAYER_BOX_HALF, nextX));
+
+        let collisionX = false;
+        if (moveX > 0) {
+            if (isBlocked(nextX + PLAYER_BOX_HALF, this.y - PLAYER_BOX_HALF, currentMap) || isBlocked(nextX + PLAYER_BOX_HALF, this.y + PLAYER_BOX_HALF, currentMap)) {
+                collisionX = true;
+            }
+        } else if (moveX < 0) {
+            if (isBlocked(nextX - PLAYER_BOX_HALF, this.y - PLAYER_BOX_HALF, currentMap) || isBlocked(nextX - PLAYER_BOX_HALF, this.y + PLAYER_BOX_HALF, currentMap)) {
+                collisionX = true;
+            }
+        }
+
+        if (!collisionX) {
+            this.x = nextX;
         } else {
             this.vx *= -1;
         }
-        const newBotY = Math.max(PLAYER_RADIUS, Math.min(canvas.height - PLAYER_RADIUS, nextY));
-        if (!isBlocked(this.x, newBotY + (this.vy > 0 ? PLAYER_RADIUS : -PLAYER_RADIUS), currentMap)) {
-            this.y = newBotY;
+
+        let nextY = this.y + moveY;
+        nextY = Math.max(PLAYER_BOX_HALF, Math.min(canvas.height - PLAYER_BOX_HALF, nextY));
+
+        let collisionY = false;
+        if (moveY > 0) {
+            if (isBlocked(this.x - PLAYER_BOX_HALF, nextY + PLAYER_BOX_HALF, currentMap) || isBlocked(this.x + PLAYER_BOX_HALF, nextY + PLAYER_BOX_HALF, currentMap)) {
+                collisionY = true;
+            }
+        } else if (moveY < 0) {
+            if (isBlocked(this.x - PLAYER_BOX_HALF, nextY - PLAYER_BOX_HALF, currentMap) || isBlocked(this.x + PLAYER_BOX_HALF, nextY - PLAYER_BOX_HALF, currentMap)) {
+                collisionY = true;
+            }
+        }
+
+        if (!collisionY) {
+            this.y = nextY;
         } else {
             this.vy *= -1;
         }
 
-        // Logic bắn của Bot (THÊM ÂM THANH)
         this.shootTimer += delta;
-        if (this.shootTimer > 900 && player && player.alive) { 
+        if (this.shootTimer > 900 && player && player.alive) {
             this.shootTimer = 0;
-            const dx = player.x - this.x;
-            const dy = player.y - this.y;
-            const len = Math.hypot(dx, dy) || 1;
-            const vx = dx / len;
-            const vy = dy / len;
-            
-            playSound('shoot'); // <-- THÊM ÂM THANH BẮN (BOT)
-            
-            bullets.push(new Bullet(this.x + vx * 25, this.y + vy * 25, vx, vy, this));
+            const vx = this.dirX;
+            const vy = this.dirY;
+            playSound('shoot');
+            // Bắn đạn từ rìa của hộp va chạm + 1px
+            bullets.push(new Bullet(this.x + vx * (PLAYER_BOX_HALF + 1), this.y + vy * (PLAYER_BOX_HALF + 1), vx, vy, this));
         }
     }
 }
 
-// 3. EXPORT các biến trạng thái game
+// 3. EXPORT CÁC BIẾN TRẠNG THÁI GAME
 export let player = null;
 export let bots = [];
 export let bullets = [];
 export let gameOver = false;
 export let score = 0;
 export let canShoot = true;
-export let currentMap = null; 
-export let playerSkin = { 
-    avatar: PLAYER_COLOR, 
-    bullet: BULLET_COLOR 
+export let currentMap = null;
+export let playerSkin = {
+    avatar: PLAYER_COLOR,
+    bullet: BULLET_COLOR
 };
-let canvas = null; 
-
-// THÊM CỜ ĐỂ TRÁNH PHÁT ÂM THANH 'defeated' NHIỀU LẦN
+let canvas = null;
 export let gameOverSoundPlayed = false;
 
-// 4. EXPORT hàm khởi tạo game
+// 4. EXPORT HÀM INIT GAME
 export function initGame(username, canvasEl) {
     canvas = canvasEl;
     gameOver = false;
-    gameOverSoundPlayed = false; // <-- RESET CỜ ÂM THANH
+    gameOverSoundPlayed = false;
     score = 0;
     bullets = [];
     bots = [];
     canShoot = true;
 
-    // ... (Phần còn lại của initGame giữ nguyên) ...
     currentMap = getRandomMap(canvas.width, canvas.height);
     const metaRaw = localStorage.getItem("user_" + username);
-    
+
     let avatarId = "default";
     let bulletId = "default";
 
@@ -143,13 +171,12 @@ export function initGame(username, canvasEl) {
         avatarId = meta.currentAvatar || "default";
         bulletId = meta.currentBullet || "default";
     }
-    
-    const avatarSkinData = AVATAR_SKINS[avatarId] || AVATAR_SKINS.default;
-    const bulletSkinData = BULLET_SKINS[bulletId] || BULLET_SKINS.default;
 
-    playerSkin.avatar = avatarSkinData.color;
-    playerSkin.bullet = bulletSkinData.color;
-    
+    const avatarSkinData = AVATAR_SKINS[avatarId] || AVATAR_SKINS["default"];
+    const bulletSkinData = BULLET_SKINS[bulletId] || BULLET_SKINS["default"];
+
+    playerSkin.bullet = bulletSkinData.data;
+
     let playerStartX, playerStartY, botStartX, botStartY;
     do {
         playerStartX = Math.floor(Math.random() * (currentMap.layout[0].length - 2) + 1) * CELL_SIZE + CELL_SIZE / 2;
@@ -158,18 +185,19 @@ export function initGame(username, canvasEl) {
     do {
         botStartX = Math.floor(Math.random() * (currentMap.layout[0].length - 2) + 1) * CELL_SIZE + CELL_SIZE / 2;
         botStartY = Math.floor(Math.random() * (currentMap.layout.length - 2) + 1) * CELL_SIZE + CELL_SIZE / 2;
-    } while (isBlocked(botStartX, botStartY, currentMap) || 
-             Math.hypot(playerStartX - botStartX, playerStartY - botStartY) < CELL_SIZE * 5);
-    
-    player = new Player(username, playerStartX, playerStartY);
-    bots.push(new Bot("Bot 1", botStartX, botStartY));
+    } while (isBlocked(botStartX, botStartY, currentMap) ||
+        Math.hypot(playerStartX - botStartX, playerStartY - botStartY) < CELL_SIZE * 5);
+
+    player = new Player(username, playerStartX, playerStartY, avatarSkinData);
+
+    const botSkinData = AVATAR_SKINS["ava_tank_red"] || AVATAR_SKINS["default"];
+    bots.push(new Bot("Bot 1", botStartX, botStartY, botSkinData));
 }
 
-// 5. EXPORT hàm cập nhật (updateGame)
+// 5. EXPORT HÀM UPDATE GAME
 export function updateGame(delta, keys) {
     if (gameOver) return;
     if (!player || !player.alive) {
-        // XỬ LÝ ÂM THANH KHI THUA (Chỉ 1 lần)
         if (!gameOverSoundPlayed) {
             playSound('defeated');
             gameOverSoundPlayed = true;
@@ -178,58 +206,97 @@ export function updateGame(delta, keys) {
         return;
     }
 
-    // ... (Logic di chuyển của Player không thay đổi) ...
-    let speedModifier = 1; 
+    // ==========================================================
+    // === LOGIC DI CHUYỂN CỦA PLAYER ===
+    // ==========================================================
+
+    let rotation = 0;
+    if (keys["KeyA"] || keys["ArrowLeft"]) rotation -= 1;
+    if (keys["KeyD"] || keys["ArrowRight"]) rotation += 1;
+
+    player.angle += rotation * PLAYER_ROTATION_SPEED * (delta / 1000);
+
+    player.dirX = Math.cos(player.angle);
+    player.dirY = Math.sin(player.angle);
+
+    let speedModifier = 1;
     const playerCellType = getMapCellType(player.x, player.y, currentMap);
     if (playerCellType === 3) {
         speedModifier = 0.5;
     }
-    let dx = 0, dy = 0;
-    if (keys["w"] || keys["arrowup"]) dy -= 1;
-    if (keys["s"] || keys["arrowdown"]) dy += 1;
-    if (keys["a"] || keys["arrowleft"]) dx -= 1;
-    if (keys["d"] || keys["arrowright"]) dx += 1;
-    if (dx || dy) {
-        const len = Math.hypot(dx, dy);
-        dx /= len; dy /= len;
-        player.dirX = dx;
-        player.dirY = dy;
-        
-        const moveX = dx * PLAYER_SPEED * speedModifier;
-        const moveY = dy * PLAYER_SPEED * speedModifier;
-        
-        const nextX = player.x + moveX;
-        const nextY = player.y + moveY;
 
-        const newPlayerX = Math.max(PLAYER_RADIUS, Math.min(canvas.width - PLAYER_RADIUS, nextX));
-        if (!isBlocked(newPlayerX + (dx > 0 ? PLAYER_RADIUS : -PLAYER_RADIUS), player.y, currentMap)) {
-            player.x = newPlayerX;
+    let moveDirection = 0;
+    if (keys["KeyW"] || keys["ArrowUp"]) moveDirection = 1;
+    if (keys["KeyS"] || keys["ArrowDown"]) moveDirection = -1;
+
+    let moveX = 0;
+    let moveY = 0;
+
+    if (moveDirection !== 0) {
+        const totalSpeed = PLAYER_SPEED * speedModifier * moveDirection;
+        moveX = player.dirX * totalSpeed;
+        moveY = player.dirY * totalSpeed;
+    }
+
+    const PLAYER_BOX_HALF = PLAYER_RADIUS * 1.25;
+
+    let nextX = player.x + moveX;
+    nextX = Math.max(PLAYER_BOX_HALF, Math.min(canvas.width - PLAYER_BOX_HALF, nextX));
+
+    let collisionX = false;
+    if (moveX > 0) {
+        if (isBlocked(nextX + PLAYER_BOX_HALF, player.y - PLAYER_BOX_HALF, currentMap) || isBlocked(nextX + PLAYER_BOX_HALF, player.y + PLAYER_BOX_HALF, currentMap)) {
+            collisionX = true;
         }
-        const newPlayerY = Math.max(PLAYER_RADIUS, Math.min(canvas.height - PLAYER_RADIUS, nextY));
-        if (!isBlocked(player.x, newPlayerY + (dy > 0 ? PLAYER_RADIUS : -PLAYER_RADIUS), currentMap)) {
-            player.y = newPlayerY;
+    } else if (moveX < 0) {
+        if (isBlocked(nextX - PLAYER_BOX_HALF, player.y - PLAYER_BOX_HALF, currentMap) || isBlocked(nextX - PLAYER_BOX_HALF, player.y + PLAYER_BOX_HALF, currentMap)) {
+            collisionX = true;
         }
     }
-    
-    // --- 2. Cập nhật bắn đạn (Player) ---
-    if (keys[" "]) { 
+    if (!collisionX) {
+        player.x = nextX;
+    }
+
+    let nextY = player.y + moveY;
+    nextY = Math.max(PLAYER_BOX_HALF, Math.min(canvas.height - PLAYER_BOX_HALF, nextY));
+
+    let collisionY = false;
+    if (moveY > 0) {
+        if (isBlocked(player.x - PLAYER_BOX_HALF, nextY + PLAYER_BOX_HALF, currentMap) || isBlocked(player.x + PLAYER_BOX_HALF, nextY + PLAYER_BOX_HALF, currentMap)) {
+            collisionY = true;
+        }
+    } else if (moveY < 0) {
+        if (isBlocked(player.x - PLAYER_BOX_HALF, nextY - PLAYER_BOX_HALF, currentMap) || isBlocked(player.x + PLAYER_BOX_HALF, nextY - PLAYER_BOX_HALF, currentMap)) {
+            collisionY = true;
+        }
+    }
+
+    if (!collisionY) {
+        player.y = nextY;
+    }
+
+    // ==========================================================
+    // === LOGIC BẮN ĐẠN VÀ VA CHẠM KHÁC ===
+    // ==========================================================
+
+    if (keys["Space"]) {
         if (canShoot) {
             canShoot = false;
-            playSound('shoot'); // <-- THÊM ÂM THANH BẮN (PLAYER)
-            
+            playSound('shoot');
+
             setTimeout(() => canShoot = true, SHOOT_COOLDOWN);
+
             const vx = player.dirX;
             const vy = player.dirY;
-            const bulletX = player.x + vx * PLAYER_RADIUS * 1.25;
-            const bulletY = player.y + vy * PLAYER_RADIUS * 1.25;
+            // Bắn từ rìa hộp + 1px
+            const bulletX = player.x + vx * (PLAYER_BOX_HALF + 1);
+            const bulletY = player.y + vy * (PLAYER_BOX_HALF + 1);
             bullets.push(new Bullet(bulletX, bulletY, vx, vy, player));
         }
     }
 
-    // --- 3. Cập nhật Bot ---
     bots.forEach(bot => bot.update(delta, player, bullets));
 
-    // --- 4. Cập nhật đạn và va chạm ---
     bullets = bullets.filter(b => !b.remove);
     bullets.forEach(b => {
         b.x += b.vx * BULLET_SPEED;
@@ -238,124 +305,102 @@ export function updateGame(delta, keys) {
 
         const c = Math.floor(b.x / CELL_SIZE);
         const r = Math.floor(b.y / CELL_SIZE);
-        
+
         if (!currentMap.layout[r] || currentMap.layout[r][c] === undefined) {
-             // Va chạm biên (sẽ được xử lý bên dưới)
+            // Out of bounds, do nothing this frame
         } else {
             const cellValue = currentMap.layout[r][c];
-            
-            // ===========================================
-            // === KHỐI CODE ĐÃ SỬA LOGIC NẢY ĐẠN ===
-            // ===========================================
-            if (cellValue === 1) { 
-                // Tường cứng - LOGIC NẨY ĐẠN ĐÃ SỬA
-                playSound('bounced');
-                bounced = true; 
 
-                // 1. Tính toán vị trí-ô của frame TRƯỚC khi va chạm
+            if (cellValue === 1) {
+                playSound('bounced');
+                bounced = true;
+
                 const prevX = b.x - b.vx * BULLET_SPEED;
                 const prevY = b.y - b.vy * BULLET_SPEED;
                 const prevC = Math.floor(prevX / CELL_SIZE);
                 const prevR = Math.floor(prevY / CELL_SIZE);
 
-                // 2. Đẩy viên đạn ra khỏi tường (quan trọng để tránh bị kẹt)
-                // Bằng cách "hoàn tác" lại bước di chuyển cuối cùng
                 b.x = prevX;
                 b.y = prevY;
 
-                // 3. Kiểm tra xem đạn va vào cạnh ngang hay cạnh dọc của ô
                 let hitVertical = false;
                 let hitHorizontal = false;
 
-                // Nếu ô-cột (column) thay đổi -> va vào cạnh DỌC
-                if (c !== prevC) {
-                    hitVertical = true;
-                }
-                // Nếu ô-hàng (row) thay đổi -> va vào cạnh NGANG
-                if (r !== prevR) {
-                    hitHorizontal = true;
-                }
+                if (c !== prevC) hitVertical = true;
+                if (r !== prevR) hitHorizontal = true;
 
-                // 4. Xử lý nảy đạn
-                if (hitVertical) {
-                    b.vx *= -1; // Đổi hướng X
-                }
-                if (hitHorizontal) {
-                    b.vy *= -1; // Đổi hướng Y
-                }
+                if (hitVertical) b.vx *= -1;
+                if (hitHorizontal) b.vy *= -1;
 
-                // 5. Trường hợp dự phòng: Nếu đạn bay trúng GÓC
-                // hoặc nếu nó không phát hiện được (bị kẹt), thì đảo ngược cả 2
                 if (!hitVertical && !hitHorizontal) {
-                    b.vx *= -1; 
+                    // This case handles hitting a corner, a bit simplified
+                    b.vx *= -1;
                     b.vy *= -1;
                 }
-            } else if (cellValue === 5 || cellValue === 4) { 
-                // Tường vỡ
-                playSound('wall_crack'); // <-- ÂM THANH TƯỜNG NỨT
-                currentMap.layout[r][c] -= 1; 
+            } else if (cellValue === 5 || cellValue === 4) {
+                playSound('wall_crack');
+                currentMap.layout[r][c] -= 1;
                 if (currentMap.layout[r][c] <= 0) {
                     currentMap.layout[r][c] = 0;
                 }
                 b.remove = true;
-                bounced = false; 
+                bounced = false;
             }
-            // ===========================================
-            // === KẾT THÚC KHỐI CODE SỬA ===
-            // ===========================================
         }
 
-        // Va chạm biên Canvas
-        if (b.x <= 0 || b.x >= canvas.width) { 
-            b.vx *= -1; 
-            bounced = true; 
-            playSound('bounced'); // <-- ÂM THANH DỘI BIÊN
+        if (b.x <= 0 || b.x >= canvas.width) {
+            b.vx *= -1;
+            bounced = true;
+            playSound('bounced');
         }
-        if (b.y <= 0 || b.y >= canvas.height) { 
-            b.vy *= -1; 
-            bounced = true; 
-            playSound('bounced'); // <-- ÂM THANH DỘI BIÊN
+        if (b.y <= 0 || b.y >= canvas.height) {
+            b.vy *= -1;
+            bounced = true;
+            playSound('bounced');
         }
-        
+
         if (bounced) b.bounceCount++;
         if (b.bounceCount > MAX_BULLET_BOUNCE) b.remove = true;
 
-        // Va chạm (Player)
-        if (player.alive) { 
-            const dist = Math.hypot(b.x - player.x, b.y - player.y);
-            if (dist < PLAYER_RADIUS + BULLET_RADIUS) {
-                playSound('hitted'); // <-- ÂM THANH TRÚNG ĐẠN
+        if (player.alive) {
+            if (b.x > player.x - PLAYER_BOX_HALF &&
+                b.x < player.x + PLAYER_BOX_HALF &&
+                b.y > player.y - PLAYER_BOX_HALF &&
+                b.y < player.y + PLAYER_BOX_HALF) {
+                playSound('hitted');
                 player.alive = false;
-                // 'gameOver' và âm thanh 'defeated' sẽ được xử lý ở đầu vòng lặp tiếp theo
                 b.remove = true;
             }
         }
-        
-        // Va chạm (Bot)
-        bots.forEach(bot => {
-            if (bot.alive && b.owner !== bot) { 
-                const dist = Math.hypot(b.x - bot.x, b.y - bot.y);
-                if (dist < PLAYER_RADIUS + BULLET_RADIUS) {
-                    playSound('hitted'); // <-- ÂM THANH TRÚNG ĐẠN
-                    bot.alive = false;
-                    b.remove = true;
-                    score++;
-                    playSound('victory'); // <-- ÂM THANH KHI GIẾT ĐƯỢC BOT
+
+        if (!b.remove) {
+            bots.forEach(bot => {
+                if (bot.alive && b.owner !== bot) {
+
+                    if (b.x > bot.x - PLAYER_BOX_HALF &&
+                        b.x < bot.x + PLAYER_BOX_HALF &&
+                        b.y > bot.y - PLAYER_BOX_HALF &&
+                        b.y < bot.y + PLAYER_BOX_HALF) {
+                        playSound('hitted');
+                        bot.alive = false;
+                        b.remove = true;
+                        score++;
+                        playSound('victory');
+                    }
                 }
-            }
-        });
+            });
+        }
     });
 
-    // --- 5. Dọn dẹp và tạo Bot mới ---
-    bots = bots.filter(bot => bot.alive); 
+    bots = bots.filter(bot => bot.alive);
     if (bots.length === 0 && !gameOver) {
         let botX, botY;
         do {
             botX = Math.floor(Math.random() * (currentMap.layout[0].length - 2) + 1) * CELL_SIZE + CELL_SIZE / 2;
             botY = Math.floor(Math.random() * (currentMap.layout.length - 2) + 1) * CELL_SIZE + CELL_SIZE / 2;
-        } while (isBlocked(botX, botY, currentMap) || 
-                   (player && Math.hypot(player.x - botX, player.y - botY) < CELL_SIZE * 5)); 
+        } while (isBlocked(botX, botY, currentMap) ||
+            (player && Math.hypot(player.x - botX, player.y - botY) < CELL_SIZE * 5));
 
-        bots.push(new Bot("Bot " + (score + 1), botX, botY));
+        bots.push(new Bot("Bot " + (score + 1), botX, botY, AVATAR_SKINS["ava_tank_red"] || AVATAR_SKINS["default"]));
     }
 }
