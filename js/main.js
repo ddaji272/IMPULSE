@@ -12,6 +12,9 @@ import { preloadSkins } from "./skins.js";
 const canvasEl = document.getElementById("gameCanvas");
 const homeEl = document.getElementById("home");
 const menuEl = document.getElementById("menu");
+// === THÊM MỚI: Lấy touch controls ===
+const touchControlsEl = document.getElementById("touchControls");
+// ===================================
 
 let lastTime = 0;
 let animationFrameId = null;
@@ -31,11 +34,31 @@ function gameLoop(now) {
     }
 }
 
+// === THÊM MỚI: Hàm kiểm tra có phải mobile không ===
+// (Cách đơn giản, hoạt động trên hầu hết các trình duyệt)
+function isMobile() {
+    // 'ontouchstart' in window là cách kiểm tra cũ nhưng vẫn hiệu quả
+    // navigator.maxTouchPoints > 0 là cách hiện đại hơn
+    return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+}
+// ===============================================
+
 function startGame(playerName) {
     startMusic(); 
     homeEl.style.display = "none";
     menuEl.style.display = "none";
     canvasEl.style.display = "block";
+
+    // === THÊM MỚI: Hiển thị controls nếu là mobile ===
+    if (isMobile() && touchControlsEl) {
+        // Xóa class 'hidden' (display: none)
+        touchControlsEl.classList.remove('hidden');
+        
+        // Thêm class 'visible' (để kích hoạt opacity)
+        // Dùng setTimeout 50ms để đảm bảo transition CSS được kích hoạt
+        setTimeout(() => touchControlsEl.classList.add('visible'), 50);
+    }
+    // ==============================================
     
     initGame(playerName, canvasEl);
     
@@ -45,6 +68,12 @@ function startGame(playerName) {
 
 function goToMenu() {
     canvasEl.style.display = "none";
+
+    // === THÊM MỚI: Ẩn touch controls ===
+    if (touchControlsEl) {
+        touchControlsEl.classList.remove('visible');
+    }
+    // ==================================
     
     const loggedUser = document.getElementById("userDisplay").textContent;
     if (loggedUser && loggedUser.trim() !== "") {
@@ -75,7 +104,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     // 2. Khởi tạo UI (Nó sẽ gán sự kiện click cho các nút)
     setupUI(startGame);
     
-    // 3. Khởi tạo Input
+    // 3. Khởi tạo Input (Giờ đây nó cũng gán cả sự kiện touch)
     setupInput();
 
     // 4. Khởi tạo Canvas
