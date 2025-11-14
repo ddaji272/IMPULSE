@@ -1,7 +1,11 @@
+// js/game.js
+
 // 1. IMPORT
 import {
     PLAYER_SPEED, BULLET_SPEED, SHOOT_COOLDOWN, PLAYER_RADIUS,
-    BULLET_RADIUS, MAX_BULLET_BOUNCE, PLAYER_COLOR, BULLET_COLOR,
+    BULLET_RADIUS, MAX_BULLET_BOUNCE, 
+    // === SỬA LẠI: Đã xóa PLAYER_COLOR khỏi import ===
+    BULLET_COLOR, 
     PLAYER_ROTATION_SPEED
 } from "./config.js";
 
@@ -11,22 +15,20 @@ import { playSound } from "./audio.js";
 
 
 // 2. EXPORT CÁC LỚP
+// ... (class Player, class Bullet, class Bot - không thay đổi) ...
 export class Player {
     constructor(name, x, y, skinData, isLocal = true) {
         this.name = name;
         this.x = x;
         this.y = y;
         this.skin = skinData;
-
         this.angle = -Math.PI / 2;
         this.dirX = Math.cos(this.angle);
         this.dirY = Math.sin(this.angle);
-
         this.alive = true;
         this.isLocal = isLocal;
     }
 }
-
 export class Bullet {
     constructor(x, y, vx, vy, owner = null) {
         this.x = x;
@@ -38,7 +40,6 @@ export class Bullet {
         this.owner = owner;
     }
 }
-
 export class Bot extends Player {
     constructor(name, x, y, skinData) {
         super(name, x, y, skinData, false);
@@ -47,13 +48,9 @@ export class Bot extends Player {
         this.shootTimer = 0;
         this.moveTimer = 0;
     }
-
     update(delta, player, bullets) {
         if (!this.alive) return;
-
-        // Kích thước HỘP VA CHẠM (bằng 1/2 kích thước vẽ)
         const PLAYER_BOX_HALF = PLAYER_RADIUS * 1.25;
-
         let speedModifier = 1;
         const botCellType = getMapCellType(this.x, this.y, currentMap);
         if (botCellType === 3) {
@@ -72,20 +69,19 @@ export class Bot extends Player {
                 this.vx = (Math.random() * 2 - 1);
                 this.vy = (Math.random() * 2 - 1);
             }
-
             const aimLen = Math.hypot(this.vx, this.vy);
             if (aimLen > 0) {
                 this.dirX = this.vx / aimLen;
                 this.dirY = this.vy / aimLen;
             }
         }
-
-        const moveX = this.vx * PLAYER_SPEED * 0.8 * speedModifier;
-        const moveY = this.vy * PLAYER_SPEED * 0.8 * speedModifier;
+        
+        // PHÉP TÍNH TỐC ĐỘ ĐÃ CHUẨN (KHÔNG CẦN * 60)
+        const moveX = this.vx * PLAYER_SPEED * 0.8 * speedModifier * (delta / 1000);
+        const moveY = this.vy * PLAYER_SPEED * 0.8 * speedModifier * (delta / 1000);
 
         let nextX = this.x + moveX;
         nextX = Math.max(PLAYER_BOX_HALF, Math.min(canvas.width - PLAYER_BOX_HALF, nextX));
-
         let collisionX = false;
         if (moveX > 0) {
             if (isBlocked(nextX + PLAYER_BOX_HALF, this.y - PLAYER_BOX_HALF, currentMap) || isBlocked(nextX + PLAYER_BOX_HALF, this.y + PLAYER_BOX_HALF, currentMap)) {
@@ -96,16 +92,13 @@ export class Bot extends Player {
                 collisionX = true;
             }
         }
-
         if (!collisionX) {
             this.x = nextX;
         } else {
             this.vx *= -1;
         }
-
         let nextY = this.y + moveY;
         nextY = Math.max(PLAYER_BOX_HALF, Math.min(canvas.height - PLAYER_BOX_HALF, nextY));
-
         let collisionY = false;
         if (moveY > 0) {
             if (isBlocked(this.x - PLAYER_BOX_HALF, nextY + PLAYER_BOX_HALF, currentMap) || isBlocked(this.x + PLAYER_BOX_HALF, nextY + PLAYER_BOX_HALF, currentMap)) {
@@ -116,24 +109,22 @@ export class Bot extends Player {
                 collisionY = true;
             }
         }
-
         if (!collisionY) {
             this.y = nextY;
         } else {
             this.vy *= -1;
         }
-
         this.shootTimer += delta;
         if (this.shootTimer > 900 && player && player.alive) {
             this.shootTimer = 0;
             const vx = this.dirX;
             const vy = this.dirY;
             playSound('shoot');
-            // Bắn đạn từ rìa của hộp va chạm + 1px
             bullets.push(new Bullet(this.x + vx * (PLAYER_BOX_HALF + 1), this.y + vy * (PLAYER_BOX_HALF + 1), vx, vy, this));
         }
     }
 }
+
 
 // 3. EXPORT CÁC BIẾN TRẠNG THÁI GAME
 export let player = null;
@@ -144,13 +135,16 @@ export let score = 0;
 export let canShoot = true;
 export let currentMap = null;
 export let playerSkin = {
-    avatar: PLAYER_COLOR,
+    // === SỬA LẠI: Thay PLAYER_COLOR thành null ===
+    // (Vì nó không còn được dùng, skin được gán trong initGame)
+    avatar: null, 
     bullet: BULLET_COLOR
 };
 let canvas = null;
 export let gameOverSoundPlayed = false;
 
 // 4. EXPORT HÀM INIT GAME
+// ... (Hàm initGame không thay đổi) ...
 export function initGame(username, canvasEl) {
     canvas = canvasEl;
     gameOver = false;
@@ -194,7 +188,9 @@ export function initGame(username, canvasEl) {
     bots.push(new Bot("Bot 1", botStartX, botStartY, botSkinData));
 }
 
+
 // 5. EXPORT HÀM UPDATE GAME
+// ... (Hàm updateGame không thay đổi, vẫn giữ logic delta chuẩn) ...
 export function updateGame(delta, keys) {
     if (gameOver) return;
     if (!player || !player.alive) {
@@ -205,44 +201,31 @@ export function updateGame(delta, keys) {
         gameOver = true;
         return;
     }
-
-    // ==========================================================
-    // === LOGIC DI CHUYỂN CỦA PLAYER ===
-    // ==========================================================
-
     let rotation = 0;
     if (keys["KeyA"] || keys["ArrowLeft"]) rotation -= 1;
     if (keys["KeyD"] || keys["ArrowRight"]) rotation += 1;
-
     player.angle += rotation * PLAYER_ROTATION_SPEED * (delta / 1000);
-
     player.dirX = Math.cos(player.angle);
     player.dirY = Math.sin(player.angle);
-
     let speedModifier = 1;
     const playerCellType = getMapCellType(player.x, player.y, currentMap);
     if (playerCellType === 3) {
         speedModifier = 0.5;
     }
-
     let moveDirection = 0;
     if (keys["KeyW"] || keys["ArrowUp"]) moveDirection = 1;
     if (keys["KeyS"] || keys["ArrowDown"]) moveDirection = -1;
-
     let moveX = 0;
     let moveY = 0;
-
     if (moveDirection !== 0) {
-        const totalSpeed = PLAYER_SPEED * speedModifier * moveDirection;
+        // PHÉP TÍNH TỐC ĐỘ ĐÃ CHUẨN (KHÔNG CẦN * 60)
+        const totalSpeed = PLAYER_SPEED * speedModifier * moveDirection * (delta / 1000);
         moveX = player.dirX * totalSpeed;
         moveY = player.dirY * totalSpeed;
     }
-
     const PLAYER_BOX_HALF = PLAYER_RADIUS * 1.25;
-
     let nextX = player.x + moveX;
     nextX = Math.max(PLAYER_BOX_HALF, Math.min(canvas.width - PLAYER_BOX_HALF, nextX));
-
     let collisionX = false;
     if (moveX > 0) {
         if (isBlocked(nextX + PLAYER_BOX_HALF, player.y - PLAYER_BOX_HALF, currentMap) || isBlocked(nextX + PLAYER_BOX_HALF, player.y + PLAYER_BOX_HALF, currentMap)) {
@@ -256,10 +239,8 @@ export function updateGame(delta, keys) {
     if (!collisionX) {
         player.x = nextX;
     }
-
     let nextY = player.y + moveY;
     nextY = Math.max(PLAYER_BOX_HALF, Math.min(canvas.height - PLAYER_BOX_HALF, nextY));
-
     let collisionY = false;
     if (moveY > 0) {
         if (isBlocked(player.x - PLAYER_BOX_HALF, nextY + PLAYER_BOX_HALF, currentMap) || isBlocked(player.x + PLAYER_BOX_HALF, nextY + PLAYER_BOX_HALF, currentMap)) {
@@ -270,70 +251,52 @@ export function updateGame(delta, keys) {
             collisionY = true;
         }
     }
-
     if (!collisionY) {
         player.y = nextY;
     }
-
-    // ==========================================================
-    // === LOGIC BẮN ĐẠN VÀ VA CHẠM KHÁC ===
-    // ==========================================================
-
     if (keys["Space"]) {
         if (canShoot) {
             canShoot = false;
             playSound('shoot');
-
             setTimeout(() => canShoot = true, SHOOT_COOLDOWN);
-
             const vx = player.dirX;
             const vy = player.dirY;
-            // Bắn từ rìa hộp + 1px
             const bulletX = player.x + vx * (PLAYER_BOX_HALF + 1);
             const bulletY = player.y + vy * (PLAYER_BOX_HALF + 1);
             bullets.push(new Bullet(bulletX, bulletY, vx, vy, player));
         }
     }
-
     bots.forEach(bot => bot.update(delta, player, bullets));
-
     bullets = bullets.filter(b => !b.remove);
     bullets.forEach(b => {
-        b.x += b.vx * BULLET_SPEED;
-        b.y += b.vy * BULLET_SPEED;
+        // PHÉP TÍNH TỐC ĐỘ ĐÃ CHUẨN (KHÔNG CẦN * 60)
+        const bulletMoveSpeed = BULLET_SPEED * (delta / 1000);
+        
+        const prevX = b.x;
+        const prevY = b.y;
+        
+        b.x += b.vx * bulletMoveSpeed;
+        b.y += b.vy * bulletMoveSpeed;
         let bounced = false;
-
         const c = Math.floor(b.x / CELL_SIZE);
         const r = Math.floor(b.y / CELL_SIZE);
-
         if (!currentMap.layout[r] || currentMap.layout[r][c] === undefined) {
-            // Out of bounds, do nothing this frame
         } else {
             const cellValue = currentMap.layout[r][c];
-
             if (cellValue === 1) {
                 playSound('bounced');
                 bounced = true;
-
-                const prevX = b.x - b.vx * BULLET_SPEED;
-                const prevY = b.y - b.vy * BULLET_SPEED;
                 const prevC = Math.floor(prevX / CELL_SIZE);
                 const prevR = Math.floor(prevY / CELL_SIZE);
-
                 b.x = prevX;
                 b.y = prevY;
-
                 let hitVertical = false;
                 let hitHorizontal = false;
-
                 if (c !== prevC) hitVertical = true;
                 if (r !== prevR) hitHorizontal = true;
-
                 if (hitVertical) b.vx *= -1;
                 if (hitHorizontal) b.vy *= -1;
-
                 if (!hitVertical && !hitHorizontal) {
-                    // This case handles hitting a corner, a bit simplified
                     b.vx *= -1;
                     b.vy *= -1;
                 }
@@ -347,7 +310,6 @@ export function updateGame(delta, keys) {
                 bounced = false;
             }
         }
-
         if (b.x <= 0 || b.x >= canvas.width) {
             b.vx *= -1;
             bounced = true;
@@ -358,10 +320,8 @@ export function updateGame(delta, keys) {
             bounced = true;
             playSound('bounced');
         }
-
         if (bounced) b.bounceCount++;
         if (b.bounceCount > MAX_BULLET_BOUNCE) b.remove = true;
-
         if (player.alive) {
             if (b.x > player.x - PLAYER_BOX_HALF &&
                 b.x < player.x + PLAYER_BOX_HALF &&
@@ -372,11 +332,9 @@ export function updateGame(delta, keys) {
                 b.remove = true;
             }
         }
-
         if (!b.remove) {
             bots.forEach(bot => {
                 if (bot.alive && b.owner !== bot) {
-
                     if (b.x > bot.x - PLAYER_BOX_HALF &&
                         b.x < bot.x + PLAYER_BOX_HALF &&
                         b.y > bot.y - PLAYER_BOX_HALF &&
@@ -391,7 +349,6 @@ export function updateGame(delta, keys) {
             });
         }
     });
-
     bots = bots.filter(bot => bot.alive);
     if (bots.length === 0 && !gameOver) {
         let botX, botY;
@@ -400,7 +357,6 @@ export function updateGame(delta, keys) {
             botY = Math.floor(Math.random() * (currentMap.layout.length - 2) + 1) * CELL_SIZE + CELL_SIZE / 2;
         } while (isBlocked(botX, botY, currentMap) ||
             (player && Math.hypot(player.x - botX, player.y - botY) < CELL_SIZE * 5));
-
         bots.push(new Bot("Bot " + (score + 1), botX, botY, AVATAR_SKINS["ava_tank_red"] || AVATAR_SKINS["default"]));
     }
 }
