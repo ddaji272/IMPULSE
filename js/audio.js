@@ -19,7 +19,7 @@ const SOUND_LIST = {
     victory: '/assets/sound-effects/victory.wav',
     
     // Music
-    music: '/assets/audio/nhac-nen.mp3'
+    music: '/assets/audio/music.mp3'
 };
 // =======================================================
 
@@ -133,3 +133,4 @@ export function toggleSfx() {
     console.log(isSfxMuted ? "Đã TẮT hiệu ứng." : "Đã BẬT hiệu ứng.");
     return isSfxMuted; // Trả về trạng thái mới
 }
+
