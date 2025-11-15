@@ -6,49 +6,45 @@ let isMusicStarted = false;
 let isMusicMuted = false;
 let isSfxMuted = false;
 
-// Danh sách các âm thanh cần tải
+// === SỬA LỖI VERCEL: Thêm dấu "/" vào đầu các đường dẫn ===
 const SOUND_LIST = {
     // Sound Effects
-    button_click: 'assets/sound-effects/button_click.wav',
-    shoot: 'assets/sound-effects/shoot.wav',
-    hitted: 'assets/sound-effects/hitted.wav',
-    bounced: 'assets/sound-effects/bounced.wav',
-    wall_crack: 'assets/sound-effects/wall_crack.wav',
-    buy: 'assets/sound-effects/buy.wav',
-    defeated: 'assets/sound-effects/defeated.wav',
-    victory: 'assets/sound-effects/victory.wav',
+    button_click: '/assets/sound-effects/button_click.wav',
+    shoot: '/assets/sound-effects/shoot.wav',
+    hitted: '/assets/sound-effects/hitted.wav',
+    bounced: '/assets/sound-effects/bounced.wav',
+    wall_crack: '/assets/sound-effects/wall_crack.wav',
+    buy: '/assets/sound-effects/buy.wav',
+    defeated: '/assets/sound-effects/defeated.wav',
+    victory: '/assets/sound-effects/victory.wav',
     
     // Music
-    music: 'assets/audio/nhac-nen.mp3'
+    music: '/assets/audio/nhac-nen.mp3'
 };
+// =======================================================
 
 
 /**
- * === SỬA LẠI: Tải trước TẤT CẢ âm thanh, bao gồm cả nhạc nền ===
- */
+ * === Tải trước TẤT CẢ âm thanh (Logic này đã đúng) ===
+ */
 export async function preloadAudio() {
     console.log("Đang tải các file âm thanh...");
     const audioPromises = []; // Tạo một mảng để chứa các Promise
 
     for (const key in SOUND_LIST) {
-        // XÓA DÒNG "if (key === 'music') continue;"
-
         const promise = new Promise((resolve, reject) => {
             const audio = new Audio(SOUND_LIST[key]);
             
             audio.addEventListener('canplaythrough', () => {
-                // === SỬA LẠI: Phân loại nhạc và SFX ===
-                if (key === 'music') {
-                    // Đây là nhạc nền
-                    backgroundMusic = audio; // Gán vào biến toàn cục
-                    backgroundMusic.loop = true;
-                    backgroundMusic.volume = 0.3;
-                    console.log("Tải nhạc nền thành công.");
-                } else {
-                    // Đây là SFX
-                    audioMap[key] = audio; // Gán vào audioMap
-                }
-                resolve(); // Báo cho Promise là đã xong
+                if (key === 'music') {
+                    backgroundMusic = audio; 
+                    backgroundMusic.loop = true;
+                    backgroundMusic.volume = 0.3;
+                    console.log("Tải nhạc nền thành công.");
+                } else {
+                    audioMap[key] = audio; 
+                }
+                resolve(); 
             });
 
             audio.addEventListener('error', (e) => {
@@ -56,7 +52,6 @@ export async function preloadAudio() {
                 reject(new Error(`Lỗi tải ${key}`));
             });
 
-            // Yêu cầu trình duyệt bắt đầu tải
             audio.load(); 
         });
 
@@ -74,7 +69,7 @@ export async function preloadAudio() {
 
 /**
  * Phát một hiệu ứng âm thanh (SFX)
- */
+ */
 export function playSound(key) {
     if (isSfxMuted) return; 
 
@@ -88,7 +83,7 @@ export function playSound(key) {
 }
 
 /**
- * === SỬA LẠI: Hàm này giờ chỉ phát nhạc đã được tải trước ===
+ * Phát nhạc đã được tải trước
  */
 export function startMusic() {
     if (isMusicStarted) return;
@@ -96,12 +91,11 @@ export function startMusic() {
         console.log("Nhạc nền đang bị tắt, sẽ không tự động phát.");
         return; 
     }
-    
-    // Kiểm tra xem nhạc đã được tải chưa
-    if (!backgroundMusic) {
-        console.error("Lỗi: startMusic() được gọi trước khi preloadAudio() hoàn tất.");
-        return;
-    }
+    
+    if (!backgroundMusic) {
+        console.error("Lỗi: startMusic() được gọi trước khi preloadAudio() hoàn tất.");
+        return;
+    }
     
     console.log("Khởi động nhạc nền (từ file đã tải)...");
     
@@ -109,7 +103,6 @@ export function startMusic() {
         isMusicStarted = true;
         console.log("Đã phát nhạc nền.");
     }).catch(e => {
-        // Lỗi này vẫn có thể xảy ra nếu người dùng chưa click
         console.error("Lỗi tự động phát nhạc (chờ người dùng click):", e);
     });
 }
@@ -127,7 +120,6 @@ export function toggleMusic() {
         if (backgroundMusic && isMusicStarted) {
             backgroundMusic.play();
         } else if (!isMusicStarted) {
-            // Nếu nhạc chưa bao giờ bắt đầu, hãy thử bắt đầu ngay
             startMusic();
         }
         console.log("Đã BẬT nhạc nền.");
