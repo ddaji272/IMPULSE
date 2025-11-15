@@ -4,18 +4,18 @@
 import {
     PLAYER_SPEED, BULLET_SPEED, SHOOT_COOLDOWN, PLAYER_RADIUS,
     BULLET_RADIUS, MAX_BULLET_BOUNCE, 
-    // === SỬA LẠI: Đã xóa PLAYER_COLOR khỏi import ===
     BULLET_COLOR, 
     PLAYER_ROTATION_SPEED
 } from "./config.js";
 
+// === SỬA LỖI: Đã xóa 'getCellRect' khỏi dòng import dưới đây ===
 import { getRandomMap, isBlocked, CELL_SIZE, getMapCellType } from "./maps.js";
 import { AVATAR_SKINS, BULLET_SKINS } from "./skins.js";
 import { playSound } from "./audio.js";
 
 
 // 2. EXPORT CÁC LỚP
-// ... (class Player, class Bullet, class Bot - không thay đổi) ...
+// (class Player, Bullet không đổi)
 export class Player {
     constructor(name, x, y, skinData, isLocal = true) {
         this.name = name;
@@ -40,6 +40,8 @@ export class Bullet {
         this.owner = owner;
     }
 }
+
+// === SỬA LẠI LOGIC DI CHUYỂN CỦA BOT ===
 export class Bot extends Player {
     constructor(name, x, y, skinData) {
         super(name, x, y, skinData, false);
@@ -48,9 +50,59 @@ export class Bot extends Player {
         this.shootTimer = 0;
         this.moveTimer = 0;
     }
+
+    // Hàm va chạm (học từ Python)
+    collideWithWalls(moveX, moveY) {
+        const PLAYER_BOX_HALF = PLAYER_RADIUS * 1.25;
+
+        // 1. Di chuyển trục X
+        this.x += moveX;
+
+        // 2. Kiểm tra và "Snap" (kéo) trục X
+        if (moveX > 0) { // Đang đi sang phải
+            if (isBlocked(this.x + PLAYER_BOX_HALF, this.y - PLAYER_BOX_HALF, currentMap) || 
+                isBlocked(this.x + PLAYER_BOX_HALF, this.y + PLAYER_BOX_HALF, currentMap)) {
+                const wallCellX = Math.floor((this.x + PLAYER_BOX_HALF) / CELL_SIZE);
+                this.x = (wallCellX * CELL_SIZE) - PLAYER_BOX_HALF - 0.01;
+                this.vx *= -1; // Đảo hướng ngẫu nhiên
+            }
+        } else if (moveX < 0) { // Đang đi sang trái
+            if (isBlocked(this.x - PLAYER_BOX_HALF, this.y - PLAYER_BOX_HALF, currentMap) || 
+                isBlocked(this.x - PLAYER_BOX_HALF, this.y + PLAYER_BOX_HALF, currentMap)) {
+                const wallCellX = Math.floor((this.x - PLAYER_BOX_HALF) / CELL_SIZE);
+                this.x = (wallCellX * CELL_SIZE) + CELL_SIZE + PLAYER_BOX_HALF + 0.01;
+                this.vx *= -1; // Đảo hướng ngẫu nhiên
+            }
+        }
+
+        // 3. Di chuyển trục Y
+        this.y += moveY;
+
+        // 4. Kiểm tra và "Snap" (kéo) trục Y
+        if (moveY > 0) { // Đang đi xuống
+            if (isBlocked(this.x - PLAYER_BOX_HALF, this.y + PLAYER_BOX_HALF, currentMap) || 
+                isBlocked(this.x + PLAYER_BOX_HALF, this.y + PLAYER_BOX_HALF, currentMap)) {
+                const wallCellY = Math.floor((this.y + PLAYER_BOX_HALF) / CELL_SIZE);
+                this.y = (wallCellY * CELL_SIZE) - PLAYER_BOX_HALF - 0.01;
+                this.vy *= -1;
+            }
+        } else if (moveY < 0) { // Đang đi lên
+            if (isBlocked(this.x - PLAYER_BOX_HALF, this.y - PLAYER_BOX_HALF, currentMap) || 
+                isBlocked(this.x + PLAYER_BOX_HALF, this.y - PLAYER_BOX_HALF, currentMap)) {
+                const wallCellY = Math.floor((this.y - PLAYER_BOX_HALF) / CELL_SIZE);
+                this.y = (wallCellY * CELL_SIZE) + CELL_SIZE + PLAYER_BOX_HALF + 0.01;
+                this.vy *= -1;
+            }
+        }
+
+        // Giữ bot trong màn hình (failsafe)
+        this.x = Math.max(PLAYER_BOX_HALF, Math.min(canvas.width - PLAYER_BOX_HALF, this.x));
+        this.y = Math.max(PLAYER_BOX_HALF, Math.min(canvas.height - PLAYER_BOX_HALF, this.y));
+    }
+
     update(delta, player, bullets) {
         if (!this.alive) return;
-        const PLAYER_BOX_HALF = PLAYER_RADIUS * 1.25;
+        
         let speedModifier = 1;
         const botCellType = getMapCellType(this.x, this.y, currentMap);
         if (botCellType === 3) {
@@ -76,49 +128,19 @@ export class Bot extends Player {
             }
         }
         
-        // PHÉP TÍNH TỐC ĐỘ ĐÃ CHUẨN (KHÔNG CẦN * 60)
         const moveX = this.vx * PLAYER_SPEED * 0.8 * speedModifier * (delta / 1000);
         const moveY = this.vy * PLAYER_SPEED * 0.8 * speedModifier * (delta / 1000);
 
-        let nextX = this.x + moveX;
-        nextX = Math.max(PLAYER_BOX_HALF, Math.min(canvas.width - PLAYER_BOX_HALF, nextX));
-        let collisionX = false;
-        if (moveX > 0) {
-            if (isBlocked(nextX + PLAYER_BOX_HALF, this.y - PLAYER_BOX_HALF, currentMap) || isBlocked(nextX + PLAYER_BOX_HALF, this.y + PLAYER_BOX_HALF, currentMap)) {
-                collisionX = true;
-            }
-        } else if (moveX < 0) {
-            if (isBlocked(nextX - PLAYER_BOX_HALF, this.y - PLAYER_BOX_HALF, currentMap) || isBlocked(nextX - PLAYER_BOX_HALF, this.y + PLAYER_BOX_HALF, currentMap)) {
-                collisionX = true;
-            }
-        }
-        if (!collisionX) {
-            this.x = nextX;
-        } else {
-            this.vx *= -1;
-        }
-        let nextY = this.y + moveY;
-        nextY = Math.max(PLAYER_BOX_HALF, Math.min(canvas.height - PLAYER_BOX_HALF, nextY));
-        let collisionY = false;
-        if (moveY > 0) {
-            if (isBlocked(this.x - PLAYER_BOX_HALF, nextY + PLAYER_BOX_HALF, currentMap) || isBlocked(this.x + PLAYER_BOX_HALF, nextY + PLAYER_BOX_HALF, currentMap)) {
-                collisionY = true;
-            }
-        } else if (moveY < 0) {
-            if (isBlocked(this.x - PLAYER_BOX_HALF, nextY - PLAYER_BOX_HALF, currentMap) || isBlocked(this.x + PLAYER_BOX_HALF, nextY - PLAYER_BOX_HALF, currentMap)) {
-                collisionY = true;
-            }
-        }
-        if (!collisionY) {
-            this.y = nextY;
-        } else {
-            this.vy *= -1;
-        }
+        // Gọi hàm va chạm mới
+        this.collideWithWalls(moveX, moveY);
+
+        // Logic bắn (giữ nguyên)
         this.shootTimer += delta;
         if (this.shootTimer > 900 && player && player.alive) {
             this.shootTimer = 0;
             const vx = this.dirX;
             const vy = this.dirY;
+            const PLAYER_BOX_HALF = PLAYER_RADIUS * 1.25;
             playSound('shoot');
             bullets.push(new Bullet(this.x + vx * (PLAYER_BOX_HALF + 1), this.y + vy * (PLAYER_BOX_HALF + 1), vx, vy, this));
         }
@@ -126,7 +148,8 @@ export class Bot extends Player {
 }
 
 
-// 3. EXPORT CÁC BIẾN TRẠNG THÁI GAME
+// 3. BIẾN TRẠNG THÁI GAME
+// (Không thay đổi)
 export let player = null;
 export let bots = [];
 export let bullets = [];
@@ -135,16 +158,14 @@ export let score = 0;
 export let canShoot = true;
 export let currentMap = null;
 export let playerSkin = {
-    // === SỬA LẠI: Thay PLAYER_COLOR thành null ===
-    // (Vì nó không còn được dùng, skin được gán trong initGame)
     avatar: null, 
     bullet: BULLET_COLOR
 };
 let canvas = null;
 export let gameOverSoundPlayed = false;
 
-// 4. EXPORT HÀM INIT GAME
-// ... (Hàm initGame không thay đổi) ...
+// 4. HÀM INIT GAME
+// (Không thay đổi)
 export function initGame(username, canvasEl) {
     canvas = canvasEl;
     gameOver = false;
@@ -189,8 +210,7 @@ export function initGame(username, canvasEl) {
 }
 
 
-// 5. EXPORT HÀM UPDATE GAME
-// ... (Hàm updateGame không thay đổi, vẫn giữ logic delta chuẩn) ...
+// 5. HÀM UPDATE GAME (Nơi sửa lỗi chính)
 export function updateGame(delta, keys) {
     if (gameOver) return;
     if (!player || !player.alive) {
@@ -201,12 +221,16 @@ export function updateGame(delta, keys) {
         gameOver = true;
         return;
     }
+
+    // --- Logic xoay (Giữ nguyên) ---
     let rotation = 0;
     if (keys["KeyA"] || keys["ArrowLeft"]) rotation -= 1;
     if (keys["KeyD"] || keys["ArrowRight"]) rotation += 1;
     player.angle += rotation * PLAYER_ROTATION_SPEED * (delta / 1000);
     player.dirX = Math.cos(player.angle);
     player.dirY = Math.sin(player.angle);
+    
+    // --- Logic tính tốc độ (Giữ nguyên) ---
     let speedModifier = 1;
     const playerCellType = getMapCellType(player.x, player.y, currentMap);
     if (playerCellType === 3) {
@@ -215,45 +239,79 @@ export function updateGame(delta, keys) {
     let moveDirection = 0;
     if (keys["KeyW"] || keys["ArrowUp"]) moveDirection = 1;
     if (keys["KeyS"] || keys["ArrowDown"]) moveDirection = -1;
+    
     let moveX = 0;
     let moveY = 0;
     if (moveDirection !== 0) {
-        // PHÉP TÍNH TỐC ĐỘ ĐÃ CHUẨN (KHÔNG CẦN * 60)
         const totalSpeed = PLAYER_SPEED * speedModifier * moveDirection * (delta / 1000);
         moveX = player.dirX * totalSpeed;
         moveY = player.dirY * totalSpeed;
     }
+
+    // ==========================================================
+    // === SỬA LẠI LOGIC VA CHẠM (Theo code Python "chuẩn") ===
+    // ==========================================================
+    
     const PLAYER_BOX_HALF = PLAYER_RADIUS * 1.25;
-    let nextX = player.x + moveX;
-    nextX = Math.max(PLAYER_BOX_HALF, Math.min(canvas.width - PLAYER_BOX_HALF, nextX));
-    let collisionX = false;
-    if (moveX > 0) {
-        if (isBlocked(nextX + PLAYER_BOX_HALF, player.y - PLAYER_BOX_HALF, currentMap) || isBlocked(nextX + PLAYER_BOX_HALF, player.y + PLAYER_BOX_HALF, currentMap)) {
-            collisionX = true;
+
+    // 1. CỨ DI CHUYỂN TRỤC X
+    player.x += moveX;
+
+    // 2. KIỂM TRA VÀ "SNAP" (KÉO) TRỤC X
+    if (moveX > 0) { // Đang đi sang phải
+        // Kiểm tra 2 góc phải của hitbox
+        if (isBlocked(player.x + PLAYER_BOX_HALF, player.y - PLAYER_BOX_HALF, currentMap) || 
+            isBlocked(player.x + PLAYER_BOX_HALF, player.y + PLAYER_BOX_HALF, currentMap)) {
+            
+            // Tìm ô (cell) bị va chạm
+            const wallCellX = Math.floor((player.x + PLAYER_BOX_HALF) / CELL_SIZE);
+            // Kéo player về mép trái của ô đó
+            player.x = (wallCellX * CELL_SIZE) - PLAYER_BOX_HALF - 0.01; // (trừ 0.01 để đảm bảo không bị kẹt)
         }
-    } else if (moveX < 0) {
-        if (isBlocked(nextX - PLAYER_BOX_HALF, player.y - PLAYER_BOX_HALF, currentMap) || isBlocked(nextX - PLAYER_BOX_HALF, player.y + PLAYER_BOX_HALF, currentMap)) {
-            collisionX = true;
-        }
-    }
-    if (!collisionX) {
-        player.x = nextX;
-    }
-    let nextY = player.y + moveY;
-    nextY = Math.max(PLAYER_BOX_HALF, Math.min(canvas.height - PLAYER_BOX_HALF, nextY));
-    let collisionY = false;
-    if (moveY > 0) {
-        if (isBlocked(player.x - PLAYER_BOX_HALF, nextY + PLAYER_BOX_HALF, currentMap) || isBlocked(player.x + PLAYER_BOX_HALF, nextY + PLAYER_BOX_HALF, currentMap)) {
-            collisionY = true;
-        }
-    } else if (moveY < 0) {
-        if (isBlocked(player.x - PLAYER_BOX_HALF, nextY - PLAYER_BOX_HALF, currentMap) || isBlocked(player.x + PLAYER_BOX_HALF, nextY - PLAYER_BOX_HALF, currentMap)) {
-            collisionY = true;
+    } else if (moveX < 0) { // Đang đi sang trái
+        // Kiểm tra 2 góc trái của hitbox
+        if (isBlocked(player.x - PLAYER_BOX_HALF, player.y - PLAYER_BOX_HALF, currentMap) || 
+            isBlocked(player.x - PLAYER_BOX_HALF, player.y + PLAYER_BOX_HALF, currentMap)) {
+            
+            const wallCellX = Math.floor((player.x - PLAYER_BOX_HALF) / CELL_SIZE);
+            // Kéo player về mép phải của ô đó
+            player.x = (wallCellX * CELL_SIZE) + CELL_SIZE + PLAYER_BOX_HALF + 0.01;
         }
     }
-    if (!collisionY) {
-        player.y = nextY;
+
+    // 3. CỨ DI CHUYỂN TRỤC Y
+    player.y += moveY;
+
+    // 4. KIỂM TRA VÀ "SNAP" (KÉO) TRỤC Y
+    if (moveY > 0) { // Đang đi xuống
+        // Kiểm tra 2 góc dưới
+        if (isBlocked(player.x - PLAYER_BOX_HALF, player.y + PLAYER_BOX_HALF, currentMap) || 
+            isBlocked(player.x + PLAYER_BOX_HALF, player.y + PLAYER_BOX_HALF, currentMap)) {
+
+            const wallCellY = Math.floor((player.y + PLAYER_BOX_HALF) / CELL_SIZE);
+            // Kéo về mép trên của ô
+            player.y = (wallCellY * CELL_SIZE) - PLAYER_BOX_HALF - 0.01;
+        }
+    } else if (moveY < 0) { // Đang đi lên
+        // Kiểm tra 2 góc trên
+        if (isBlocked(player.x - PLAYER_BOX_HALF, player.y - PLAYER_BOX_HALF, currentMap) || 
+            isBlocked(player.x + PLAYER_BOX_HALF, player.y - PLAYER_BOX_HALF, currentMap)) {
+            
+            const wallCellY = Math.floor((player.y - PLAYER_BOX_HALF) / CELL_SIZE);
+            // Kéo về mép dưới của ô
+            player.y = (wallCellY * CELL_SIZE) + CELL_SIZE + PLAYER_BOX_HALF + 0.01;
+        }
     }
+
+    // Giữ player trong màn hình (failsafe, giữ nguyên)
+    player.x = Math.max(PLAYER_BOX_HALF, Math.min(canvas.width - PLAYER_BOX_HALF, player.x));
+    player.y = Math.max(PLAYER_BOX_HALF, Math.min(canvas.height - PLAYER_BOX_HALF, player.y));
+
+    // ==========================================================
+    // === HẾT PHẦN SỬA VA CHẠM ===
+    // ==========================================================
+
+    // --- Logic bắn (Giữ nguyên) ---
     if (keys["Space"]) {
         if (canShoot) {
             canShoot = false;
@@ -266,10 +324,11 @@ export function updateGame(delta, keys) {
             bullets.push(new Bullet(bulletX, bulletY, vx, vy, player));
         }
     }
+
+    // --- Logic Bot, Đạn, v.v... (Giữ nguyên) ---
     bots.forEach(bot => bot.update(delta, player, bullets));
     bullets = bullets.filter(b => !b.remove);
     bullets.forEach(b => {
-        // PHÉP TÍNH TỐC ĐỘ ĐÃ CHUẨN (KHÔNG CẦN * 60)
         const bulletMoveSpeed = BULLET_SPEED * (delta / 1000);
         
         const prevX = b.x;
