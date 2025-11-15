@@ -173,17 +173,25 @@ document.addEventListener("DOMContentLoaded", async () => {
         
         if (document.visibilityState === 'visible') {
             // KHI QUAY LẠI TAB:
-            // Chỉ khởi động lại nếu:
-            // 1. Vòng lặp đang TẮT
-            // 2. Canvas game đang HIỂN THỊ
-            // 3. Game CHƯA KẾT THÚC
-            if (!animationFrameId && canvasEl.style.display === "block" && !gameOver) {
-                console.log("Game Tiếp Tục (quay lại tab)");
-                // Đặt lại 'lastTime' để ngăn 'delta' khổng lồ
-                lastTime = performance.now();
-                // Khởi động lại vòng lặp
-                animationFrameId = requestAnimationFrame(gameLoop);
+            // === SỬA LỖI LOGIC KHI BỊ HẠ LÚC CHUYỂN TAB ===
+            // 1. Kiểm tra xem có đang ở màn hình game không
+            if (canvasEl.style.display !== "block") return;
+            
+            // 2. Kiểm tra xem game đã kết thúc CHƯA
+            if (!gameOver) {
+                // Game vẫn đang chạy -> Khởi động lại vòng lặp
+                if (!animationFrameId) { // Chỉ khởi động nếu nó đang tắt
+                    console.log("Game Tiếp Tục (quay lại tab)");
+                    lastTime = performance.now(); // Đặt lại 'lastTime' để ngăn 'delta' khổng lồ
+                    animationFrameId = requestAnimationFrame(gameLoop);
+                }
+            } else {
+                // Game ĐÃ kết thúc (ví dụ: bị hạ lúc đang thu nhỏ)
+                // -> Chỉ vẽ màn hình Game Over, KHÔNG khởi động lại vòng lặp
+                console.log("Vẽ lại màn hình Game Over (quay lại tab)");
+                drawGameOver();
             }
+            // ============================================
         }
     });
     // ====================================================
