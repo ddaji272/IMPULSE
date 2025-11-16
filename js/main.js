@@ -50,7 +50,7 @@ function isMobile() {
 
 function startGame(playerName) {
     // === SỬA LỖI ÂM THANH: ĐÃ XÓA startMusic() KHỎI ĐÂY ===
-    // startMusic(); // <--- DÒNG NÀY ĐÃ BỊ XÓA
+    startMusic();
     // ===============================================
     
     homeEl.style.display = "none";
@@ -196,3 +196,4 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
     // ====================================================
 });
+
