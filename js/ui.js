@@ -1,9 +1,8 @@
 import { startMusic, playSound } from "./audio.js";
 import { AVATAR_SKINS, BULLET_SKINS } from "./skins.js";
-// === THAY ĐỔI 1: Thêm equipSkinAPI vào import ===
+// IMPORT CÁC HÀM API
 import { registerAPI, loginAPI, getLeaderboardAPI, equipSkinAPI } from "./api.js";
 
-// === THAY ĐỔI 2: ĐÃ XÓA hàm equipSkinAPI viết tay (bị hardcode localhost) ở đây ===
 
 export function setupUI(startGameCallback) {
     
@@ -51,8 +50,9 @@ export function setupUI(startGameCallback) {
     function showAuthMsg(msg, isError = false) {
         if (!authMsg) return;
         authMsg.style.display = "block";
-        authMsg.style.color = isError ? "#ff5c5c" : "#00ffcc"; 
+        authMsg.style.color = isError ? "#ff5c5c" : "#00ffcc"; // Đỏ hoặc Xanh
         authMsg.textContent = msg;
+        // Tự ẩn sau 3s
         setTimeout(() => (authMsg.style.display = "none"), 3000);
     }
 
@@ -285,9 +285,9 @@ export function setupUI(startGameCallback) {
         shopList.innerHTML = shopHTML;
         shopPopup.classList.remove("hidden");
 
+        // --- XỬ LÝ MUA (Đã cập nhật logic thông báo lỗi) ---
         shopPopup.querySelectorAll(".buyBtn").forEach(btn => {
             btn.addEventListener("click", e => {
-                playSound('button_click');
                 const id = e.currentTarget.dataset.id;
                 const price = Number(e.currentTarget.dataset.price);
 
@@ -296,19 +296,28 @@ export function setupUI(startGameCallback) {
                     currentUser.gold -= price;
                     
                     if (!currentUser.ownedAvatars) currentUser.ownedAvatars = ["default"];
-                    currentUser.ownedAvatars.push(id);
+                    if (!currentUser.ownedBullets) currentUser.ownedBullets = ["default"];
+
+                    if (type === "avatar") {
+                        currentUser.ownedAvatars.push(id);
+                    } else {
+                        currentUser.ownedBullets.push(id);
+                    }
                     
                     localStorage.setItem('impulse_user', JSON.stringify(currentUser));
                     
                     showAuthMsg("Mua thành công (Local)!", false);
                     openShop(type);
                 } else {
-                    showAuthMsg("Không đủ tiền!", true);
+                    playSound('button_click');
+                    // === LOGIC MỚI: Tính toán tiền thiếu và hiển thị ===
+                    const missing = price - currentUser.gold;
+                    showAuthMsg(`Không đủ tiền! Cần thêm ${missing} vàng.`, true);
                 }
             });
         });
 
-        // --- XỬ LÝ TRANG BỊ (GỌI API SERVER) ---
+        // --- XỬ LÝ TRANG BỊ ---
         shopPopup.querySelectorAll(".useBtn").forEach(btn => {
             btn.addEventListener("click", async (e) => {
                 playSound('button_click');
@@ -317,7 +326,7 @@ export function setupUI(startGameCallback) {
                 if (type === "avatar") currentUser.skin = id;
                 else currentUser.bullet = id;
 
-                // === THAY ĐỔI 3: Gọi hàm equipSkinAPI đã import (nó sẽ dùng link Render) ===
+                // Gọi API để lưu lên Server
                 await equipSkinAPI(currentUser.username, 
                                  type === "avatar" ? id : null, 
                                  type === "bullet" ? id : null);
