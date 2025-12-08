@@ -8,14 +8,15 @@ import {
     PLAYER_ROTATION_SPEED
 } from "./config.js";
 
-// === SỬA LỖI: Đã xóa 'getCellRect' khỏi dòng import dưới đây ===
 import { getRandomMap, isBlocked, CELL_SIZE, getMapCellType } from "./maps.js";
 import { AVATAR_SKINS, BULLET_SKINS } from "./skins.js";
 import { playSound } from "./audio.js";
 
+// === THÊM: Import API để lưu điểm ===
+import { saveGameResultAPI } from "./api.js"; 
+
 
 // 2. EXPORT CÁC LỚP
-// (class Player, Bullet không đổi)
 export class Player {
     constructor(name, x, y, skinData, isLocal = true) {
         this.name = name;
@@ -29,6 +30,7 @@ export class Player {
         this.isLocal = isLocal;
     }
 }
+
 export class Bullet {
     constructor(x, y, vx, vy, owner = null) {
         this.x = x;
@@ -41,7 +43,6 @@ export class Bullet {
     }
 }
 
-// === SỬA LẠI LOGIC DI CHUYỂN CỦA BOT ===
 export class Bot extends Player {
     constructor(name, x, y, skinData) {
         super(name, x, y, skinData, false);
@@ -51,7 +52,7 @@ export class Bot extends Player {
         this.moveTimer = 0;
     }
 
-    // Hàm va chạm (học từ Python)
+    // Hàm va chạm (giữ nguyên logic tốt)
     collideWithWalls(moveX, moveY) {
         const PLAYER_BOX_HALF = PLAYER_RADIUS * 1.25;
 
@@ -95,7 +96,7 @@ export class Bot extends Player {
             }
         }
 
-        // Giữ bot trong màn hình (failsafe)
+        // Giữ bot trong màn hình
         this.x = Math.max(PLAYER_BOX_HALF, Math.min(canvas.width - PLAYER_BOX_HALF, this.x));
         this.y = Math.max(PLAYER_BOX_HALF, Math.min(canvas.height - PLAYER_BOX_HALF, this.y));
     }
@@ -131,10 +132,8 @@ export class Bot extends Player {
         const moveX = this.vx * PLAYER_SPEED * 0.8 * speedModifier * (delta / 1000);
         const moveY = this.vy * PLAYER_SPEED * 0.8 * speedModifier * (delta / 1000);
 
-        // Gọi hàm va chạm mới
         this.collideWithWalls(moveX, moveY);
 
-        // Logic bắn (giữ nguyên)
         this.shootTimer += delta;
         if (this.shootTimer > 900 && player && player.alive) {
             this.shootTimer = 0;
@@ -149,7 +148,6 @@ export class Bot extends Player {
 
 
 // 3. BIẾN TRẠNG THÁI GAME
-// (Không thay đổi)
 export let player = null;
 export let bots = [];
 export let bullets = [];
@@ -164,8 +162,8 @@ export let playerSkin = {
 let canvas = null;
 export let gameOverSoundPlayed = false;
 
+
 // 4. HÀM INIT GAME
-// (Không thay đổi)
 export function initGame(username, canvasEl) {
     canvas = canvasEl;
     gameOver = false;
@@ -176,15 +174,15 @@ export function initGame(username, canvasEl) {
     canShoot = true;
 
     currentMap = getRandomMap(canvas.width, canvas.height);
-    const metaRaw = localStorage.getItem("user_" + username);
+    const metaRaw = localStorage.getItem("impulse_user"); // Lưu ý: Sửa key cho khớp main.js
 
     let avatarId = "default";
     let bulletId = "default";
 
     if (metaRaw) {
         const meta = JSON.parse(metaRaw);
-        avatarId = meta.currentAvatar || "default";
-        bulletId = meta.currentBullet || "default";
+        // Nếu user object lưu skin thì lấy ra, tạm thời fallback về default
+        // avatarId = meta.skin || "default"; 
     }
 
     const avatarSkinData = AVATAR_SKINS[avatarId] || AVATAR_SKINS["default"];
@@ -210,19 +208,45 @@ export function initGame(username, canvasEl) {
 }
 
 
-// 5. HÀM UPDATE GAME (Nơi sửa lỗi chính)
+// 5. HÀM UPDATE GAME (Nơi tích hợp API)
 export function updateGame(delta, keys) {
     if (gameOver) return;
+
+    // --- KIỂM TRA PLAYER CHẾT ---
     if (!player || !player.alive) {
         if (!gameOverSoundPlayed) {
             playSound('defeated');
             gameOverSoundPlayed = true;
+
+            // === [QUAN TRỌNG] GỌI API LƯU ĐIỂM ===
+            const savedUser = localStorage.getItem('impulse_user');
+            if (savedUser) {
+                const user = JSON.parse(savedUser);
+                // Logic tính vàng: Ví dụ 10 điểm = 1 vàng
+                const goldEarned = Math.floor(score / 10); 
+
+                console.log(`📡 Đang lưu điểm: Score ${score}, Gold +${goldEarned}`);
+
+                // Gọi hàm API (đã import ở trên)
+                saveGameResultAPI(user.username, score, goldEarned)
+                    .then(data => {
+                        console.log("✅ Server đã lưu:", data);
+                        // Cập nhật lại localStorage để hiển thị ngay số vàng mới ở Menu
+                        if (data.currentData) {
+                            user.highScore = data.currentData.highScore;
+                            user.gold = data.currentData.gold;
+                            localStorage.setItem('impulse_user', JSON.stringify(user));
+                        }
+                    })
+                    .catch(err => console.error("❌ Lỗi lưu điểm:", err));
+            }
+            // ======================================
         }
         gameOver = true;
         return;
     }
 
-    // --- Logic xoay (Giữ nguyên) ---
+    // --- Logic xoay ---
     let rotation = 0;
     if (keys["KeyA"] || keys["ArrowLeft"]) rotation -= 1;
     if (keys["KeyD"] || keys["ArrowRight"]) rotation += 1;
@@ -230,7 +254,7 @@ export function updateGame(delta, keys) {
     player.dirX = Math.cos(player.angle);
     player.dirY = Math.sin(player.angle);
     
-    // --- Logic tính tốc độ (Giữ nguyên) ---
+    // --- Logic tính tốc độ ---
     let speedModifier = 1;
     const playerCellType = getMapCellType(player.x, player.y, currentMap);
     if (playerCellType === 3) {
@@ -248,70 +272,46 @@ export function updateGame(delta, keys) {
         moveY = player.dirY * totalSpeed;
     }
 
-    // ==========================================================
-    // === SỬA LẠI LOGIC VA CHẠM (Theo code Python "chuẩn") ===
-    // ==========================================================
-    
+    // --- Logic va chạm Player (Giữ nguyên) ---
     const PLAYER_BOX_HALF = PLAYER_RADIUS * 1.25;
 
-    // 1. CỨ DI CHUYỂN TRỤC X
+    // 1. Trục X
     player.x += moveX;
-
-    // 2. KIỂM TRA VÀ "SNAP" (KÉO) TRỤC X
-    if (moveX > 0) { // Đang đi sang phải
-        // Kiểm tra 2 góc phải của hitbox
+    if (moveX > 0) { 
         if (isBlocked(player.x + PLAYER_BOX_HALF, player.y - PLAYER_BOX_HALF, currentMap) || 
             isBlocked(player.x + PLAYER_BOX_HALF, player.y + PLAYER_BOX_HALF, currentMap)) {
-            
-            // Tìm ô (cell) bị va chạm
             const wallCellX = Math.floor((player.x + PLAYER_BOX_HALF) / CELL_SIZE);
-            // Kéo player về mép trái của ô đó
-            player.x = (wallCellX * CELL_SIZE) - PLAYER_BOX_HALF - 0.01; // (trừ 0.01 để đảm bảo không bị kẹt)
+            player.x = (wallCellX * CELL_SIZE) - PLAYER_BOX_HALF - 0.01; 
         }
-    } else if (moveX < 0) { // Đang đi sang trái
-        // Kiểm tra 2 góc trái của hitbox
+    } else if (moveX < 0) { 
         if (isBlocked(player.x - PLAYER_BOX_HALF, player.y - PLAYER_BOX_HALF, currentMap) || 
             isBlocked(player.x - PLAYER_BOX_HALF, player.y + PLAYER_BOX_HALF, currentMap)) {
-            
             const wallCellX = Math.floor((player.x - PLAYER_BOX_HALF) / CELL_SIZE);
-            // Kéo player về mép phải của ô đó
             player.x = (wallCellX * CELL_SIZE) + CELL_SIZE + PLAYER_BOX_HALF + 0.01;
         }
     }
 
-    // 3. CỨ DI CHUYỂN TRỤC Y
+    // 2. Trục Y
     player.y += moveY;
-
-    // 4. KIỂM TRA VÀ "SNAP" (KÉO) TRỤC Y
-    if (moveY > 0) { // Đang đi xuống
-        // Kiểm tra 2 góc dưới
+    if (moveY > 0) { 
         if (isBlocked(player.x - PLAYER_BOX_HALF, player.y + PLAYER_BOX_HALF, currentMap) || 
             isBlocked(player.x + PLAYER_BOX_HALF, player.y + PLAYER_BOX_HALF, currentMap)) {
-
             const wallCellY = Math.floor((player.y + PLAYER_BOX_HALF) / CELL_SIZE);
-            // Kéo về mép trên của ô
             player.y = (wallCellY * CELL_SIZE) - PLAYER_BOX_HALF - 0.01;
         }
-    } else if (moveY < 0) { // Đang đi lên
-        // Kiểm tra 2 góc trên
+    } else if (moveY < 0) { 
         if (isBlocked(player.x - PLAYER_BOX_HALF, player.y - PLAYER_BOX_HALF, currentMap) || 
             isBlocked(player.x + PLAYER_BOX_HALF, player.y - PLAYER_BOX_HALF, currentMap)) {
-            
             const wallCellY = Math.floor((player.y - PLAYER_BOX_HALF) / CELL_SIZE);
-            // Kéo về mép dưới của ô
             player.y = (wallCellY * CELL_SIZE) + CELL_SIZE + PLAYER_BOX_HALF + 0.01;
         }
     }
 
-    // Giữ player trong màn hình (failsafe, giữ nguyên)
+    // Giới hạn màn hình
     player.x = Math.max(PLAYER_BOX_HALF, Math.min(canvas.width - PLAYER_BOX_HALF, player.x));
     player.y = Math.max(PLAYER_BOX_HALF, Math.min(canvas.height - PLAYER_BOX_HALF, player.y));
 
-    // ==========================================================
-    // === HẾT PHẦN SỬA VA CHẠM ===
-    // ==========================================================
-
-    // --- Logic bắn (Giữ nguyên) ---
+    // --- Logic bắn ---
     if (keys["Space"]) {
         if (canShoot) {
             canShoot = false;
@@ -325,7 +325,7 @@ export function updateGame(delta, keys) {
         }
     }
 
-    // --- Logic Bot, Đạn, v.v... (Giữ nguyên) ---
+    // --- Update Bots & Bullets ---
     bots.forEach(bot => bot.update(delta, player, bullets));
     bullets = bullets.filter(b => !b.remove);
     bullets.forEach(b => {
@@ -339,10 +339,10 @@ export function updateGame(delta, keys) {
         let bounced = false;
         const c = Math.floor(b.x / CELL_SIZE);
         const r = Math.floor(b.y / CELL_SIZE);
-        if (!currentMap.layout[r] || currentMap.layout[r][c] === undefined) {
-        } else {
+        
+        if (currentMap.layout[r] && currentMap.layout[r][c] !== undefined) {
             const cellValue = currentMap.layout[r][c];
-            if (cellValue === 1) {
+            if (cellValue === 1) { // Tường cứng
                 playSound('bounced');
                 bounced = true;
                 const prevC = Math.floor(prevX / CELL_SIZE);
@@ -359,7 +359,7 @@ export function updateGame(delta, keys) {
                     b.vx *= -1;
                     b.vy *= -1;
                 }
-            } else if (cellValue === 5 || cellValue === 4) {
+            } else if (cellValue === 5 || cellValue === 4) { // Tường phá được
                 playSound('wall_crack');
                 currentMap.layout[r][c] -= 1;
                 if (currentMap.layout[r][c] <= 0) {
@@ -369,35 +369,33 @@ export function updateGame(delta, keys) {
                 bounced = false;
             }
         }
+        
+        // Va chạm viền canvas
         if (b.x <= 0 || b.x >= canvas.width) {
-            b.vx *= -1;
-            bounced = true;
-            playSound('bounced');
+            b.vx *= -1; bounced = true; playSound('bounced');
         }
         if (b.y <= 0 || b.y >= canvas.height) {
-            b.vy *= -1;
-            bounced = true;
-            playSound('bounced');
+            b.vy *= -1; bounced = true; playSound('bounced');
         }
         if (bounced) b.bounceCount++;
         if (b.bounceCount > MAX_BULLET_BOUNCE) b.remove = true;
+
+        // Đạn trúng Player
         if (player.alive) {
-            if (b.x > player.x - PLAYER_BOX_HALF &&
-                b.x < player.x + PLAYER_BOX_HALF &&
-                b.y > player.y - PLAYER_BOX_HALF &&
-                b.y < player.y + PLAYER_BOX_HALF) {
+            if (b.x > player.x - PLAYER_BOX_HALF && b.x < player.x + PLAYER_BOX_HALF &&
+                b.y > player.y - PLAYER_BOX_HALF && b.y < player.y + PLAYER_BOX_HALF) {
                 playSound('hitted');
-                player.alive = false;
+                player.alive = false; // -> Sẽ kích hoạt logic lưu điểm ở frame sau
                 b.remove = true;
             }
         }
+
+        // Đạn trúng Bot
         if (!b.remove) {
             bots.forEach(bot => {
                 if (bot.alive && b.owner !== bot) {
-                    if (b.x > bot.x - PLAYER_BOX_HALF &&
-                        b.x < bot.x + PLAYER_BOX_HALF &&
-                        b.y > bot.y - PLAYER_BOX_HALF &&
-                        b.y < bot.y + PLAYER_BOX_HALF) {
+                    if (b.x > bot.x - PLAYER_BOX_HALF && b.x < bot.x + PLAYER_BOX_HALF &&
+                        b.y > bot.y - PLAYER_BOX_HALF && b.y < bot.y + PLAYER_BOX_HALF) {
                         playSound('hitted');
                         bot.alive = false;
                         b.remove = true;
@@ -408,6 +406,8 @@ export function updateGame(delta, keys) {
             });
         }
     });
+
+    // Spawn bot mới nếu hết
     bots = bots.filter(bot => bot.alive);
     if (bots.length === 0 && !gameOver) {
         let botX, botY;
