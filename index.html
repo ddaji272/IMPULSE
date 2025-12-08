@@ -18,6 +18,8 @@
       <button id="sfxToggleBtn" title="Tắt hiệu ứng">🔊</button>
   </div>
 
+  <p id="authMsg" class="info-msg" style="display:none; position: fixed; top: 10%; left: 50%; transform: translateX(-50%); z-index: 10000; background: rgba(0,0,0,0.9); padding: 15px 25px; border-radius: 8px; text-align: center; width: auto; min-width: 250px; font-weight: bold; box-shadow: 0 0 15px rgba(255, 255, 255, 0.2); border: 1px solid rgba(255,255,255,0.1);"></p>
+
   <div id="home" class="menu-container">
     <h1 class="title">⚡ IMPULSE ⚡</h1>
 
@@ -29,8 +31,6 @@
         <button id="loginBtn">Đăng nhập</button>
       </div>
     </div>
-
-    <p id="authMsg" class="info-msg" style="display:none;"></p>
 
     <hr class="divider" />
 
@@ -84,7 +84,8 @@
         - Di chuyển bằng <b>W A S D</b><br />
         - Bắn bằng <b>Space</b> (cooldown 1s)<br />
         - Mục tiêu: sống sót đến cuối cùng (demo: 1 bot)<br />
-        - Sau khi đăng nhập, chế độ mạng LAN sẽ được bật (chưa triển khai).
+        - Cơ chế tính điểm: Hạ Bot +1 điểm. Sống sót càng lâu càng tốt.<br />
+        - Vàng được cộng khi kết thúc game (1 điểm = 10 vàng).
       </p>
       <button class="closeBtn">Đóng</button>
     </div>
