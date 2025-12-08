@@ -1,12 +1,13 @@
-import { playSound } from "./audio.js";
-// === SỬA LỖI ÂM THANH: Đảm bảo 'startMusic' được import ===
-import { startMusic } from "./audio.js";
-// IMPORT skins.js
+import { startMusic, playSound } from "./audio.js";
 import { AVATAR_SKINS, BULLET_SKINS } from "./skins.js";
+// === THAY ĐỔI 1: Thêm equipSkinAPI vào import ===
+import { registerAPI, loginAPI, getLeaderboardAPI, equipSkinAPI } from "./api.js";
+
+// === THAY ĐỔI 2: ĐÃ XÓA hàm equipSkinAPI viết tay (bị hardcode localhost) ở đây ===
 
 export function setupUI(startGameCallback) {
     
-    // --- Lấy tất cả các element DOM ---
+    // --- Lấy DOM Elements ---
     const home = document.getElementById("home");
     const menu = document.getElementById("menu");
     const canvas = document.getElementById("gameCanvas");
@@ -15,17 +16,25 @@ export function setupUI(startGameCallback) {
     const loginBtn = document.getElementById("loginBtn");
     const usernameInput = document.getElementById("username");
     const passwordInput = document.getElementById("password");
+    
+    // UI sau khi đăng nhập
     const userDisplay = document.getElementById("userDisplay");
-    const goldAmount = document.getElementById("goldAmount");
+    const goldAmount = document.getElementById("goldAmount"); 
     const logoutBtn = document.getElementById("btnLogout");
+    const menuPlayBtn = document.getElementById("btnPlay"); 
+    
+    // UI Demo (Khách)
     const playBtn = document.getElementById("playBtn"); 
     const displayName = document.getElementById("displayName");
     const errorMsg = document.getElementById("error");
-    const menuPlayBtn = document.getElementById("btnPlay"); 
+
+    // Các nút chức năng
     const leaderboardBtn = document.getElementById("leaderboardBtn");
     const guideBtn = document.getElementById("guideBtn");
     const leaderboardBtn2 = document.getElementById("btnLeaderboard2");
     const guideBtn2 = document.getElementById("btnGuide2");
+    
+    // Popups
     const guidePopup = document.getElementById("guidePopup");
     const leaderboardPopup = document.getElementById("leaderboardPopup");
     const leaderboardList = document.getElementById("leaderboardList");
@@ -33,269 +42,221 @@ export function setupUI(startGameCallback) {
     const shopTitle = document.getElementById("shopTitle");
     const ownedList = document.getElementById("ownedList");
     const shopList = document.getElementById("shopList");
+    const closeBtns = document.querySelectorAll(".closeBtn");
+
     const avatarBtn = document.getElementById("avatarBtn");
     const bulletBtn = document.getElementById("bulletBtn");
-    const closeBtns = document.querySelectorAll(".closeBtn"); // Lấy tất cả nút đóng
 
-    // --- Helper ---
+    // --- Helper Hiển thị thông báo ---
     function showAuthMsg(msg, isError = false) {
-// ... (Hàm này giữ nguyên) ...
-// ... existing code ...
         if (!authMsg) return;
         authMsg.style.display = "block";
-// ... existing code ...
-        authMsg.style.color = isError ? "#ff5c5c" : "#00ffcc";
+        authMsg.style.color = isError ? "#ff5c5c" : "#00ffcc"; 
         authMsg.textContent = msg;
-// ... existing code ...
         setTimeout(() => (authMsg.style.display = "none"), 3000);
     }
 
-    // --- Gán sự kiện cho các nút ---
+    // ============================================================
+    // 1. XỬ LÝ ĐĂNG KÝ & ĐĂNG NHẬP
+    // ============================================================
 
-    // Nút "Bắt đầu chơi (Demo)"
-    if (playBtn) {
-        playBtn.addEventListener("click", () => {
-            // === SỬA LỖI ÂM THANH: Thêm 'startMusic' ===
+    if (registerBtn) {
+        registerBtn.addEventListener("click", async () => {
             startMusic(); 
             playSound('button_click');
-            const name = displayName.value.trim() || "Guest";
-// ... (Logic còn lại giữ nguyên) ...
-// ... existing code ...
+            
+            const user = usernameInput.value.trim();
+            const pass = passwordInput.value.trim();
+
+            if (!user || !pass) {
+                showAuthMsg("Vui lòng nhập đầy đủ!", true);
+                return;
+            }
+
+            try {
+                await registerAPI(user, pass);
+                showAuthMsg("Đăng ký thành công! Hãy đăng nhập.", false);
+            } catch (err) {
+                showAuthMsg(err.message || "Lỗi đăng ký", true);
+            }
+        });
+    }
+
+    if (loginBtn) {
+        loginBtn.addEventListener("click", async () => {
+            startMusic();
+            playSound('button_click');
+
+            const user = usernameInput.value.trim();
+            const pass = passwordInput.value.trim();
+
+            if (!user || !pass) {
+                showAuthMsg("Vui lòng nhập đầy đủ!", true);
+                return;
+            }
+
+            try {
+                const data = await loginAPI(user, pass);
+                
+                const currentUser = data.user;
+                localStorage.setItem('impulse_user', JSON.stringify(currentUser));
+
+                showAuthMsg("Đăng nhập thành công!", false);
+                updateMenuUI(currentUser);
+                switchToMenu();
+
+            } catch (err) {
+                showAuthMsg(err.message || "Sai tài khoản/mật khẩu", true);
+            }
+        });
+    }
+
+    function switchToMenu() {
+        home.style.display = "none";
+        menu.style.display = "block";
+        canvas.style.display = "none";
+    }
+
+    function updateMenuUI(user) {
+        if (userDisplay) userDisplay.textContent = user.username;
+        if (goldAmount) goldAmount.textContent = user.gold || 0;
+    }
+
+    if (logoutBtn) {
+        logoutBtn.addEventListener("click", () => {
+            playSound('button_click');
+            localStorage.removeItem('impulse_user');
+            location.reload();
+        });
+    }
+
+    // ============================================================
+    // 2. CÁC NÚT CHƠI GAME
+    // ============================================================
+
+    if (playBtn) {
+        playBtn.addEventListener("click", () => {
+            startMusic();
+            playSound('button_click');
+            const name = displayName.value.trim();
+
             if (!name) {
                 errorMsg.style.display = "block";
-// ... existing code ...
                 errorMsg.textContent = "Tên hiển thị không được để trống!";
                 return;
-// ... existing code ...
             }
             errorMsg.style.display = "none";
-// ... existing code ...
+
             home.style.display = "none";
             canvas.style.display = "block";
-// ... existing code ...
             startGameCallback(name);
         });
     }
 
-    // Nút "VÀO GAME" (sau khi đăng nhập)
     if (menuPlayBtn) {
         menuPlayBtn.addEventListener("click", () => {
-            // (Không cần thêm startMusic() ở đây,
-            // vì người dùng đã click "Đăng nhập" trước đó rồi)
-// ... (Logic còn lại giữ nguyên) ...
-// ... existing code ...
             playSound('button_click');
-            const loggedUser = userDisplay.textContent || "Player";
-// ... existing code ...
-            const confirmDemo = confirm("Chế độ LAN chưa triển khai. Chơi demo local?");
-            if (!confirmDemo) return;
-// ... existing code ...
-            menu.style.display = "none";
-            canvas.style.display = "block";
-// ... existing code ...
-            startGameCallback(loggedUser);
+            const savedUser = localStorage.getItem('impulse_user');
+            if (savedUser) {
+                const user = JSON.parse(savedUser);
+                menu.style.display = "none";
+                canvas.style.display = "block";
+                startGameCallback(user.username);
+            }
         });
     }
 
-    // Đăng ký
-    if (registerBtn) {
-        registerBtn.addEventListener("click", () => {
-            // === SỬA LỖI ÂM THANH: Thêm 'startMusic' ===
-            startMusic(); 
-            playSound('button_click');
-            const user = usernameInput.value.trim();
-// ... (Logic còn lại giữ nguyên) ...
-// ... existing code ...
-            const pass = passwordInput.value.trim();
-            if (!user || !pass) {
-// ... existing code ...
-                showAuthMsg("Vui lòng nhập đầy đủ!", true); return;
-            }
-// ... existing code ...
-            if (localStorage.getItem("user_" + user)) {
-                showAuthMsg("Tài khoản đã tồn tại!", true); return;
-// ... existing code ...
-            }
-            const meta = { 
-// ... existing code ...
-                pass, gold: 1200, 
-                ownedAvatars: ["default"], ownedBullets: ["default"],
-// ... existing code ...
-                currentAvatar: "default", currentBullet: "default"
-            };
-// ... existing code ...
-            localStorage.setItem("user_" + user, JSON.stringify(meta));
-            showAuthMsg(`${user} đã đăng ký tài khoản thành công!`);
-// ... existing code ...
-        });
-    }
+    // ============================================================
+    // 3. LEADERBOARD
+    // ============================================================
 
-    // Đăng nhập
-    if (loginBtn) {
-        loginBtn.addEventListener("click", () => {
-            // === SỬA LỖI ÂM THANH: Thêm 'startMusic' ===
-            startMusic(); 
-            playSound('button_click');
-            const user = usernameInput.value.trim();
-// ... (Logic còn lại giữ nguyên) ...
-// ... existing code ...
-            const pass = passwordInput.value.trim();
-            if (!user || !pass) {
-// ... existing code ...
-                showAuthMsg("Vui lòng nhập đầy đủ!", true); return;
+    async function loadLeaderboard() {
+        if (!leaderboardList) return;
+        leaderboardList.innerHTML = "<li>Đang tải...</li>";
+
+        try {
+            const data = await getLeaderboardAPI();
+            leaderboardList.innerHTML = "";
+            
+            if (data.length === 0) {
+                leaderboardList.innerHTML = "<li>Chưa có dữ liệu</li>";
+                return;
             }
-// ... existing code ...
-            const raw = localStorage.getItem("user_" + user);
-            if (!raw) {
-// ... existing code ...
-                showAuthMsg("Tài khoản hoặc mật khẩu sai!", true); return;
-            }
-// ... existing code ...
-            const meta = JSON.parse(raw);
-            if (meta.pass !== pass) {
-// ... existing code ...
-                showAuthMsg("Tài khoản hoặc mật khẩu sai!", true); return;
-            }
-// ... existing code ...
-            userDisplay.textContent = user;
-            goldAmount.textContent = meta.gold || 0;
-// ... existing code ...
-            home.style.display = "none";
-            menu.style.display = "block";
-// ... existing code ...
-        });
-    }
-    
-    // Đăng xuất
-// ... (Hàm này giữ nguyên) ...
-// ... existing code ...
-    if (logoutBtn) {
-        logoutBtn.addEventListener("click", () => {
-// ... existing code ...
-            playSound('button_click');
-            menu.style.display = "none";
-// ... existing code ...
-            home.style.display = "block";
-            usernameInput.value = "";
-// ... existing code ...
-            passwordInput.value = "";
-        });
-    }
 
-    // Leaderboard & Guide
-// ... (Các hàm này giữ nguyên) ...
-// ... existing code ...
-    function loadLeaderboard() {
-        const fakeData = [ { name: "Player1", score: 1500 }, { name: "Player2", score: 1320 } ];
-// ... existing code ...
-        if (leaderboardList) leaderboardList.innerHTML = fakeData.map(p => `<li>${p.name} — ${p.score} điểm</li>`).join("");
-    }
+            leaderboardList.innerHTML = data.map((u, i) => `
+                <li>
+                    <span style="color: yellow">#${i + 1}</span> 
+                    <strong>${u.username}</strong> 
+                    - <span>${u.highScore} 🏆</span>
+                    - <small>(${u.skin || 'default'})</small>
+                </li>
+            `).join("");
 
-    if (leaderboardBtn) leaderboardBtn.addEventListener("click", () => {
-// ... existing code ...
-        playSound('button_click');
-        loadLeaderboard();
-// ... existing code ...
-        if (leaderboardPopup) leaderboardPopup.classList.remove("hidden");
-    });
-    if (leaderboardBtn2) leaderboardBtn2.addEventListener("click", () => {
-// ... existing code ...
-        playSound('button_click');
-        loadLeaderboard();
-// ... existing code ...
-        if (leaderboardPopup) leaderboardPopup.classList.remove("hidden");
-    });
-    if (guideBtn) guideBtn.addEventListener("click", () => {
-// ... existing code ...
-        playSound('button_click');
-        if (guidePopup) guidePopup.classList.remove("hidden");
-// ... existing code ...
-    });
-    if (guideBtn2) guideBtn2.addEventListener("click", () => {
-// ... existing code ...
-        playSound('button_click');
-        if (guidePopup) guidePopup.classList.remove("hidden");
-// ... existing code ...
-    });
-
-    // ========== NÚT ĐÓNG POPUP ==========
-// ... (Hàm này giữ nguyên) ...
-// ... existing code ...
-    closeBtns.forEach(btn =>
-        btn.addEventListener("click", () => {
-// ... existing code ...
-            playSound('button_click');
-            if (guidePopup) guidePopup.classList.add("hidden");
-// ... existing code ...
-            if (leaderboardPopup) leaderboardPopup.classList.add("hidden");
-            if (shopPopup) shopPopup.classList.add("hidden");
-// ... existing code ...
-        })
-    );
-// ... existing code ...
-    // ===================================
-
-    // ========== SHOP ==========
-// ... (Toàn bộ logic Shop giữ nguyên) ...
-// ... existing code ...
-    function openShop(type) {
-        if (!shopPopup || !shopTitle || !ownedList || !shopList || !userDisplay || !goldAmount) {
-// ... existing code ...
-            console.error("Thiếu element DOM cho Shop!");
-            return;
-// ... existing code ...
+        } catch (err) {
+            leaderboardList.innerHTML = `<li style="color:red">Lỗi kết nối Server</li>`;
         }
+    }
+
+    const openLeaderboard = () => {
+        playSound('button_click');
+        if (leaderboardPopup) leaderboardPopup.classList.remove("hidden");
+        loadLeaderboard();
+    };
+
+    if (leaderboardBtn) leaderboardBtn.addEventListener("click", openLeaderboard);
+    if (leaderboardBtn2) leaderboardBtn2.addEventListener("click", openLeaderboard);
+
+    // ============================================================
+    // 4. HƯỚNG DẪN & ĐÓNG POPUP
+    // ============================================================
+    
+    const openGuide = () => {
+        playSound('button_click');
+        if (guidePopup) guidePopup.classList.remove("hidden");
+    };
+    if (guideBtn) guideBtn.addEventListener("click", openGuide);
+    if (guideBtn2) guideBtn2.addEventListener("click", openGuide);
+
+    closeBtns.forEach(btn => btn.addEventListener("click", () => {
+        playSound('button_click');
+        if (guidePopup) guidePopup.classList.add("hidden");
+        if (leaderboardPopup) leaderboardPopup.classList.add("hidden");
+        if (shopPopup) shopPopup.classList.add("hidden");
+    }));
+
+    // ============================================================
+    // 5. SHOP SYSTEM
+    // ============================================================
+
+    function openShop(type) {
+        if (!shopPopup) return;
 
         shopTitle.textContent = type === "avatar" ? "Kho Skin Avatar" : "Kho Skin Đạn";
-// ... existing code ...
-        const currentUser = userDisplay.textContent || null;
         
-        const SKIN_DATA = (type === "avatar") ? AVATAR_SKINS : BULLET_SKINS;
-// ... existing code ...
-        
-        let ownedIds = ["default"], meta = { gold: 0 };
-// ... existing code ...
-        let currentSkinId = "default";
-
-        if (currentUser) {
-// ... existing code ...
-            const metaRaw = localStorage.getItem("user_" + currentUser);
-            if (metaRaw) {
-// ... existing code ...
-                meta = JSON.parse(metaRaw);
-                if (type === "avatar") {
-// ... existing code ...
-                    ownedIds = meta.ownedAvatars || ["default"];
-                    currentSkinId = meta.currentAvatar || "default";
-// ... existing code ...
-                } else {
-                    ownedIds = meta.ownedBullets || ["default"];
-// ... existing code ...
-                    currentSkinId = meta.currentBullet || "default";
-                }
-// ... existing code ...
-                goldAmount.textContent = meta.gold || 0;
-            }
-// ... existing code ...
-        } else {
-            ownedIds = ["default"];
-// ... existing code ...
-            goldAmount.textContent = "0";
+        const savedUser = localStorage.getItem('impulse_user');
+        if (!savedUser) {
+            showAuthMsg("Vui lòng đăng nhập lại!", true);
+            return;
         }
-// ... existing code ...
+        let currentUser = JSON.parse(savedUser);
+        
+        if (goldAmount) goldAmount.textContent = currentUser.gold || 0;
+
+        const SKIN_DATA = (type === "avatar") ? AVATAR_SKINS : BULLET_SKINS;
+        
+        let currentSkinId = (type === "avatar") ? (currentUser.skin || "default") : (currentUser.bullet || "default");
+        
+        let ownedIds = currentUser.ownedAvatars || ["default"];
+        if (!ownedIds.includes(currentSkinId)) ownedIds.push(currentSkinId);
 
         let ownedHTML = "";
-// ... existing code ...
         let shopHTML = "";
 
         for (const skinId in SKIN_DATA) {
-// ... existing code ...
             const skin = SKIN_DATA[skinId];
-            if (skinId === "default") continue; 
-// ... existing code ...
+            if (skinId === "default") continue;
 
             if (ownedIds.includes(skinId)) {
-// ... existing code ...
                 ownedHTML += `
                     <li>
                         ${skin.name} 
@@ -304,19 +265,15 @@ export function setupUI(startGameCallback) {
                         </button>
                     </li>`;
             } else {
-// ... existing code ...
                 shopHTML += `
                     <li>
                         ${skin.name} <strong>${skin.price}🪙</strong> 
                         <button data-id="${skinId}" data-price="${skin.price}" class="buyBtn">Mua</button>
                     </li>`;
-// ... existing code ...
             }
         }
-// ... existing code ...
-        
+
         const defaultSkinName = (type === "avatar") ? AVATAR_SKINS.default.name : BULLET_SKINS.default.name;
-// ... existing code ...
         ownedList.innerHTML = `
             <li>
                 ${defaultSkinName}
@@ -324,107 +281,62 @@ export function setupUI(startGameCallback) {
                     ${"default" === currentSkinId ? 'Đang dùng' : 'Dùng'}
                 </button>
             </li>` + ownedHTML;
-// ... existing code ...
             
         shopList.innerHTML = shopHTML;
-// ... existing code ...
-        
-        shopPopup.classList.remove("hidden"); 
+        shopPopup.classList.remove("hidden");
 
-        // Gán sự kiện cho các nút Mua
-// ... existing code ...
         shopPopup.querySelectorAll(".buyBtn").forEach(btn => {
             btn.addEventListener("click", e => {
-// ... existing code ...
-                playSound('button_click'); // <-- Click trước
-                const id = e.currentTarget.dataset.id;
-// ... existing code ...
-                const price = Number(e.currentTarget.dataset.price);
-                
-                if (!currentUser) { showAuthMsg("Bạn cần đăng nhập để mua!", true); return; }
-// ... existing code ...
-                let metaToUpdate = JSON.parse(localStorage.getItem("user_" + currentUser));
-
-                if (metaToUpdate.gold >= price) {
-// ... existing code ...
-                    playSound('buy'); // <-- THÊM ÂM THANH MUA THÀNH CÔNG
-                    metaToUpdate.gold -= price;
-// ... existing code ...
-                    if (type === "avatar") {
-                        metaToUpdate.ownedAvatars.push(id);
-// ... existing code ...
-                    } else {
-                        metaToUpdate.ownedBullets.push(id);
-// ... existing code ...
-                    }
-                    localStorage.setItem("user_" + currentUser, JSON.stringify(metaToUpdate));
-// ... existing code ...
-                    goldAmount.textContent = metaToUpdate.gold;
-                    showAuthMsg("Mua thành công!", false);
-// ... existing code ...
-                    openShop(type); 
-                } else {
-// ... existing code ...
-                    showAuthMsg("Không đủ tiền!", true);
-                }
-// ... existing code ...
-            });
-        });
-
-        // Gán sự kiện cho nút Dùng
-// ... existing code ...
-        shopPopup.querySelectorAll(".useBtn").forEach(btn => {
-            btn.addEventListener("click", e => {
-// ... existing code ...
                 playSound('button_click');
                 const id = e.currentTarget.dataset.id;
-// ... existing code ...
-                if (!currentUser) { showAuthMsg("Bạn cần đăng nhập để trang bị!", true); return; }
-                let metaToUpdate = JSON.parse(localStorage.getItem("user_" + currentUser));
-// ... existing code ...
-                if (type === "avatar") {
-                    metaToUpdate.currentAvatar = id;
-// ... existing code ...
+                const price = Number(e.currentTarget.dataset.price);
+
+                if (currentUser.gold >= price) {
+                    playSound('buy');
+                    currentUser.gold -= price;
+                    
+                    if (!currentUser.ownedAvatars) currentUser.ownedAvatars = ["default"];
+                    currentUser.ownedAvatars.push(id);
+                    
+                    localStorage.setItem('impulse_user', JSON.stringify(currentUser));
+                    
+                    showAuthMsg("Mua thành công (Local)!", false);
+                    openShop(type);
                 } else {
-                    metaToUpdate.currentBullet = id;
-// ... existing code ...
+                    showAuthMsg("Không đủ tiền!", true);
                 }
-                localStorage.setItem("user_" + currentUser, JSON.stringify(metaToUpdate));
-// ... existing code ...
-                showAuthMsg(`Đã trang bị: ${id}!`, false);
-                openShop(type);
-// ... existing code ...
             });
         });
-    } // --- Hết hàm openShop ---
 
-    // ========== SỬA LỖI AVATAR/BULLET ==========
-// ... (Hàm này giữ nguyên) ...
-// ... existing code ...
-    if (avatarBtn) {
-        avatarBtn.addEventListener("click", () => { // <-- SỬA
-// ... existing code ...
-            playSound('button_click'); // <-- SỬA
-            openShop("avatar");
-// ... existing code ...
+        // --- XỬ LÝ TRANG BỊ (GỌI API SERVER) ---
+        shopPopup.querySelectorAll(".useBtn").forEach(btn => {
+            btn.addEventListener("click", async (e) => {
+                playSound('button_click');
+                const id = e.currentTarget.dataset.id;
+                
+                if (type === "avatar") currentUser.skin = id;
+                else currentUser.bullet = id;
+
+                // === THAY ĐỔI 3: Gọi hàm equipSkinAPI đã import (nó sẽ dùng link Render) ===
+                await equipSkinAPI(currentUser.username, 
+                                 type === "avatar" ? id : null, 
+                                 type === "bullet" ? id : null);
+
+                localStorage.setItem('impulse_user', JSON.stringify(currentUser));
+                
+                showAuthMsg(`Đã trang bị: ${id}`, false);
+                openShop(type);
+            });
         });
-    } else {
-// ... existing code ...
-        console.error("Lỗi: Không tìm thấy element #avatarBtn");
     }
-// ... existing code ...
-    
-    if (bulletBtn) {
-// ... existing code ...
-        bulletBtn.addEventListener("click", () => { // <-- SỬA
-            playSound('button_click'); // <-- SỬA
-// ... existing code ...
-            openShop("bullet");
-        });
-// ... existing code ...
-    } else {
-        console.error("Lỗi: Không tìm thấy element #bulletBtn");
-// ... existing code ...
+
+    if (avatarBtn) avatarBtn.addEventListener("click", () => { playSound('button_click'); openShop("avatar"); });
+    if (bulletBtn) bulletBtn.addEventListener("click", () => { playSound('button_click'); openShop("bullet"); });
+
+    const savedUser = localStorage.getItem('impulse_user');
+    if (savedUser) {
+        const user = JSON.parse(savedUser);
+        updateMenuUI(user);
+        switchToMenu();
     }
-    // ==========================================
 }
