@@ -226,7 +226,7 @@ export function updateGame(delta, keys) {
             const savedUser = localStorage.getItem('impulse_user');
             if (savedUser) {
                 const user = JSON.parse(savedUser);
-                const goldEarned = Math.floor(score / 10); 
+                const goldEarned = Math.floor(score*10); 
 
                 console.log(`📡 Đang lưu điểm: Score ${score}, Gold +${goldEarned}`);
 
