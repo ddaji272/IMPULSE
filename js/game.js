@@ -12,7 +12,7 @@ import { getRandomMap, isBlocked, CELL_SIZE, getMapCellType } from "./maps.js";
 import { AVATAR_SKINS, BULLET_SKINS } from "./skins.js";
 import { playSound } from "./audio.js";
 
-// === THÊM: Import API để lưu điểm ===
+// Import API để lưu điểm
 import { saveGameResultAPI } from "./api.js"; 
 
 
@@ -52,7 +52,7 @@ export class Bot extends Player {
         this.moveTimer = 0;
     }
 
-    // Hàm va chạm (giữ nguyên logic tốt)
+    // Hàm va chạm
     collideWithWalls(moveX, moveY) {
         const PLAYER_BOX_HALF = PLAYER_RADIUS * 1.25;
 
@@ -126,6 +126,9 @@ export class Bot extends Player {
             if (aimLen > 0) {
                 this.dirX = this.vx / aimLen;
                 this.dirY = this.vy / aimLen;
+                
+                // === [SỬA LỖI 2] Cập nhật góc quay (angle) để Bot không bị đơ skin ===
+                this.angle = Math.atan2(this.dirY, this.dirX);
             }
         }
         
@@ -174,15 +177,16 @@ export function initGame(username, canvasEl) {
     canShoot = true;
 
     currentMap = getRandomMap(canvas.width, canvas.height);
-    const metaRaw = localStorage.getItem("impulse_user"); // Lưu ý: Sửa key cho khớp main.js
+    const metaRaw = localStorage.getItem("impulse_user"); 
 
     let avatarId = "default";
     let bulletId = "default";
 
     if (metaRaw) {
         const meta = JSON.parse(metaRaw);
-        // Nếu user object lưu skin thì lấy ra, tạm thời fallback về default
-        // avatarId = meta.skin || "default"; 
+        // Nếu muốn load skin thật thì uncomment dòng dưới:
+        avatarId = meta.skin || "default"; 
+        bulletId = meta.bullet || "default";
     }
 
     const avatarSkinData = AVATAR_SKINS[avatarId] || AVATAR_SKINS["default"];
@@ -208,7 +212,7 @@ export function initGame(username, canvasEl) {
 }
 
 
-// 5. HÀM UPDATE GAME (Nơi tích hợp API)
+// 5. HÀM UPDATE GAME
 export function updateGame(delta, keys) {
     if (gameOver) return;
 
@@ -218,20 +222,17 @@ export function updateGame(delta, keys) {
             playSound('defeated');
             gameOverSoundPlayed = true;
 
-            // === [QUAN TRỌNG] GỌI API LƯU ĐIỂM ===
+            // GỌI API LƯU ĐIỂM
             const savedUser = localStorage.getItem('impulse_user');
             if (savedUser) {
                 const user = JSON.parse(savedUser);
-                // Logic tính vàng: Ví dụ 10 điểm = 1 vàng
                 const goldEarned = Math.floor(score / 10); 
 
                 console.log(`📡 Đang lưu điểm: Score ${score}, Gold +${goldEarned}`);
 
-                // Gọi hàm API (đã import ở trên)
                 saveGameResultAPI(user.username, score, goldEarned)
                     .then(data => {
                         console.log("✅ Server đã lưu:", data);
-                        // Cập nhật lại localStorage để hiển thị ngay số vàng mới ở Menu
                         if (data.currentData) {
                             user.highScore = data.currentData.highScore;
                             user.gold = data.currentData.gold;
@@ -240,7 +241,6 @@ export function updateGame(delta, keys) {
                     })
                     .catch(err => console.error("❌ Lỗi lưu điểm:", err));
             }
-            // ======================================
         }
         gameOver = true;
         return;
@@ -272,7 +272,7 @@ export function updateGame(delta, keys) {
         moveY = player.dirY * totalSpeed;
     }
 
-    // --- Logic va chạm Player (Giữ nguyên) ---
+    // --- Logic va chạm Player ---
     const PLAYER_BOX_HALF = PLAYER_RADIUS * 1.25;
 
     // 1. Trục X
@@ -307,7 +307,6 @@ export function updateGame(delta, keys) {
         }
     }
 
-    // Giới hạn màn hình
     player.x = Math.max(PLAYER_BOX_HALF, Math.min(canvas.width - PLAYER_BOX_HALF, player.x));
     player.y = Math.max(PLAYER_BOX_HALF, Math.min(canvas.height - PLAYER_BOX_HALF, player.y));
 
@@ -370,7 +369,6 @@ export function updateGame(delta, keys) {
             }
         }
         
-        // Va chạm viền canvas
         if (b.x <= 0 || b.x >= canvas.width) {
             b.vx *= -1; bounced = true; playSound('bounced');
         }
@@ -385,7 +383,7 @@ export function updateGame(delta, keys) {
             if (b.x > player.x - PLAYER_BOX_HALF && b.x < player.x + PLAYER_BOX_HALF &&
                 b.y > player.y - PLAYER_BOX_HALF && b.y < player.y + PLAYER_BOX_HALF) {
                 playSound('hitted');
-                player.alive = false; // -> Sẽ kích hoạt logic lưu điểm ở frame sau
+                player.alive = false; 
                 b.remove = true;
             }
         }
@@ -393,21 +391,25 @@ export function updateGame(delta, keys) {
         // Đạn trúng Bot
         if (!b.remove) {
             bots.forEach(bot => {
-                if (bot.alive && b.owner !== bot) {
-                    if (b.x > bot.x - PLAYER_BOX_HALF && b.x < bot.x + PLAYER_BOX_HALF &&
-                        b.y > bot.y - PLAYER_BOX_HALF && b.y < bot.y + PLAYER_BOX_HALF) {
-                        playSound('hitted');
-                        bot.alive = false;
-                        b.remove = true;
-                        score++;
-                        playSound('victory');
+                if (bot.alive) {
+                    // === [SỬA LỖI 1] Logic đạn trúng bot ===
+                    // Chỉ cho phép đạn của chính nó giết nó NẾU đã nảy tường (b.bounceCount > 0)
+                    // Đạn của người khác (b.owner !== bot) thì luôn giết được
+                    if (b.owner !== bot || b.bounceCount > 0) {
+                        if (b.x > bot.x - PLAYER_BOX_HALF && b.x < bot.x + PLAYER_BOX_HALF &&
+                            b.y > bot.y - PLAYER_BOX_HALF && b.y < bot.y + PLAYER_BOX_HALF) {
+                            playSound('hitted');
+                            bot.alive = false;
+                            b.remove = true;
+                            score++;
+                            playSound('victory');
+                        }
                     }
                 }
             });
         }
     });
 
-    // Spawn bot mới nếu hết
     bots = bots.filter(bot => bot.alive);
     if (bots.length === 0 && !gameOver) {
         let botX, botY;
