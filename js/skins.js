@@ -69,10 +69,10 @@ export const AVATAR_SKINS = {
 // --- Định nghĩa Bullet Skins (Giữ nguyên) ---
 export const BULLET_SKINS = {
     "default": {
-        name: "Mặc định",
+        name: "Đạn xanh",
         price: 0,
         type: "color",
-        data: BULLET_COLOR 
+        data: "#2012e7ff" 
     },
     "bul_yellow": {
         name: "Đạn Vàng",
@@ -87,3 +87,4 @@ export const BULLET_SKINS = {
         data: "#9b59b6" 
     }
 };
+
