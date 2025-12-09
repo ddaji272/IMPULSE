@@ -1,4 +1,5 @@
 // js/ui.js
+
 import { startMusic, playSound } from "./audio.js";
 import { AVATAR_SKINS, BULLET_SKINS } from "./skins.js";
 import { registerAPI, loginAPI, getLeaderboardAPI, equipSkinAPI, buyItemAPI } from "./api.js";
@@ -40,6 +41,25 @@ export function setupUI(startGameCallback) {
 
     const avatarBtn = document.getElementById("avatarBtn");
     const bulletBtn = document.getElementById("bulletBtn");
+
+    // --- HÀM HỖ TRỢ LẤY TÊN SKIN (FIX LỖI ID) ---
+    function getSkinName(skinId, type = "avatar") {
+        // 1. Xử lý các ID cũ từ database (Mapping ID cũ sang ID mới)
+        if (skinId === "tank-default") skinId = "default";
+        if (!skinId) skinId = "default";
+
+        // 2. Chọn danh sách tra cứu
+        const SKIN_LIST = (type === "avatar") ? AVATAR_SKINS : BULLET_SKINS;
+
+        // 3. Tra cứu
+        if (SKIN_LIST[skinId]) {
+            return SKIN_LIST[skinId].name;
+        }
+
+        // 4. Nếu vẫn không tìm thấy (do ID lạ), trả về tên tạm cho đẹp
+        // Thay vì hiện "ava_tank_white", sẽ cố gắng hiện tên dễ đọc hơn
+        return "Skin: " + skinId;
+    }
 
     function showAuthMsg(msg, isError = false) {
         if (!authMsg) return;
@@ -115,18 +135,17 @@ export function setupUI(startGameCallback) {
         }
     });
 
-    // --- LEADERBOARD (ĐÃ SỬA: Hiển thị tên thay vì ID) ---
+    // --- LEADERBOARD (ĐÃ SỬA: Dùng hàm getSkinName) ---
     async function loadLeaderboard() {
         if (!leaderboardList) return;
         leaderboardList.innerHTML = "<li>Đang tải...</li>";
         try {
             const data = await getLeaderboardAPI();
             leaderboardList.innerHTML = data.length ? data.map((u, i) => {
-                // SỬA: Tra cứu tên skin từ AVATAR_SKINS
-                // Nếu tìm thấy thì lấy .name, không thấy thì hiện ID gốc
-                const skinName = AVATAR_SKINS[u.skin] ? AVATAR_SKINS[u.skin].name : u.skin;
+                // SỬA: Dùng hàm getSkinName để xử lý ID cũ 'tank-default'
+                const displayName = getSkinName(u.skin, "avatar"); 
                 
-                return `<li><span style="color:yellow">#${i+1}</span> <strong>${u.username}</strong> - ${u.highScore}🏆 <small>(${skinName})</small></li>`;
+                return `<li><span style="color:yellow">#${i+1}</span> <strong>${u.username}</strong> - ${u.highScore}🏆 <small>(${displayName})</small></li>`;
             }).join("") : "<li>Chưa có dữ liệu</li>";
         } catch (err) { leaderboardList.innerHTML = "<li>Lỗi tải BXH</li>"; }
     }
@@ -163,8 +182,10 @@ export function setupUI(startGameCallback) {
         const SKIN_DATA = (type === "avatar") ? AVATAR_SKINS : BULLET_SKINS;
         
         // Xác định skin hiện tại đang dùng (để disable nút)
+        // Fix ID cũ ngay tại đây luôn
         let currentSkinId = (type === "avatar") ? (currentUser.skin || "default") : (currentUser.bullet || "default");
-        
+        if (currentSkinId === "tank-default") currentSkinId = "default";
+
         let ownedIds = (type === "avatar") ? (currentUser.ownedAvatars || ["default"]) : (currentUser.ownedBullets || ["default"]);
         if (!ownedIds.includes("default")) ownedIds.push("default");
 
@@ -175,7 +196,6 @@ export function setupUI(startGameCallback) {
             
             if (ownedIds.includes(skinId)) {
                 // Đã sở hữu -> Nút Dùng
-                // Kiểm tra xem có đang dùng skin này không
                 const isEquipped = (skinId === currentSkinId);
                 ownedHTML += `
                     <li>
@@ -209,7 +229,6 @@ export function setupUI(startGameCallback) {
                     playSound('buy');
                     showAuthMsg("Mua thành công!", false);
 
-                    // Cập nhật lại user từ server trả về
                     currentUser = data.user;
                     localStorage.setItem('impulse_user', JSON.stringify(currentUser));
                     
@@ -228,20 +247,18 @@ export function setupUI(startGameCallback) {
                 const id = e.currentTarget.dataset.id;
                 
                 try {
-                    // Gọi API lưu trang bị
                     const data = await equipSkinAPI(currentUser.username, 
                                      type === "avatar" ? id : null, 
                                      type === "bullet" ? id : null);
                     
-                    // QUAN TRỌNG: Cập nhật lại localStorage từ dữ liệu Server trả về
                     if (data && data.user) {
                         currentUser = data.user;
                         localStorage.setItem('impulse_user', JSON.stringify(currentUser));
                     }
                     
-                    // Lấy tên từ biến SKIN_DATA (đã được chọn đúng loại ở đầu hàm)
-                    const skinName = SKIN_DATA[id] ? SKIN_DATA[id].name : id;
-                    showAuthMsg(`Đã trang bị: ${skinName}`, false);
+                    // SỬA: Dùng hàm getSkinName để hiển thị chắc chắn đúng tên
+                    const displayName = getSkinName(id, type);
+                    showAuthMsg(`Đã trang bị: ${displayName}`, false);
                     
                     openShop(type); // Refresh để cập nhật nút "Đang dùng"
                 } catch (err) {
