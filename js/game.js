@@ -54,43 +54,29 @@ export class Bot extends Player {
         this.vy = 0;
         this.shootTimer = 0;
         this.moveTimer = 0;
-        this.changeDirTimer = 0;
         
-        // Độ khó hiện tại
         this.difficulty = difficulty;
 
-        // --- 1. GIỚI HẠN CHỈ SỐ (Theo yêu cầu của bạn) ---
-        // Tốc độ tối đa chỉ bằng 90% - 100% người chơi (không được nhanh hơn)
-        // Level 0: 50% tốc độ -> Level cao: Max 100%
+        // Giới hạn tốc độ: Max 100% tốc độ người chơi
         this.speedCap = Math.min(1.0, 0.5 + (this.difficulty * 0.1)); 
 
-        // --- 2. CÁC THAM SỐ TRÍ TUỆ (Behavior) ---
-        
-        // Biết nhìn tường (Line of Sight): Level 2 trở lên mới có
-        this.hasLineOfSight = this.difficulty >= 2;
-
-        // Biết bắn đón đầu (Predictive Aiming): Level 4 trở lên mới có
-        this.canPredictAim = this.difficulty >= 4;
-
-        // Thời gian phản xạ (đổi hướng/bắn): Càng khôn càng nhanh
+        // Các kỹ năng trí tuệ
+        this.hasLineOfSight = this.difficulty >= 2; // Level 2+ biết nhìn
+        this.canPredictAim = this.difficulty >= 4;  // Level 4+ biết bắn đón đầu
         this.reactionTime = Math.max(200, 1000 - (this.difficulty * 150)); 
     }
 
-    // Hàm kiểm tra xem có tường chắn giữa Bot và Player không (Raycasting đơn giản)
+    // Kiểm tra tầm nhìn (Raycasting)
     checkLineOfSight(player) {
         if (!player || !player.alive) return false;
-        
-        const steps = 20; // Kiểm tra 20 điểm trên đường thẳng
+        const steps = 20; 
         const dx = (player.x - this.x) / steps;
         const dy = (player.y - this.y) / steps;
 
         for (let i = 1; i < steps; i++) {
             const checkX = this.x + dx * i;
             const checkY = this.y + dy * i;
-            // Nếu có điểm nào nằm trong tường -> Bị khuất tầm nhìn
-            if (isBlocked(checkX, checkY, currentMap)) {
-                return false;
-            }
+            if (isBlocked(checkX, checkY, currentMap)) return false;
         }
         return true;
     }
@@ -99,13 +85,12 @@ export class Bot extends Player {
         const PLAYER_BOX_HALF = PLAYER_RADIUS * 1.25;
         this.x += moveX;
         
-        // Xử lý va chạm X
         if (moveX > 0) { 
             if (isBlocked(this.x + PLAYER_BOX_HALF, this.y - PLAYER_BOX_HALF, currentMap) || 
                 isBlocked(this.x + PLAYER_BOX_HALF, this.y + PLAYER_BOX_HALF, currentMap)) {
                 const wallCellX = Math.floor((this.x + PLAYER_BOX_HALF) / CELL_SIZE);
                 this.x = (wallCellX * CELL_SIZE) - PLAYER_BOX_HALF - 0.01;
-                this.vx *= -1; // Đụng tường thì đổi hướng
+                this.vx *= -1; 
             }
         } else if (moveX < 0) { 
             if (isBlocked(this.x - PLAYER_BOX_HALF, this.y - PLAYER_BOX_HALF, currentMap) || 
@@ -118,7 +103,6 @@ export class Bot extends Player {
 
         this.y += moveY;
         
-        // Xử lý va chạm Y
         if (moveY > 0) { 
             if (isBlocked(this.x - PLAYER_BOX_HALF, this.y + PLAYER_BOX_HALF, currentMap) || 
                 isBlocked(this.x + PLAYER_BOX_HALF, this.y + PLAYER_BOX_HALF, currentMap)) {
@@ -150,51 +134,45 @@ export class Bot extends Player {
         
         if (this.moveTimer > this.reactionTime) {
             this.moveTimer = 0;
-
             const canSee = this.checkLineOfSight(player);
 
             if (player && player.alive) {
                 // A. DI CHUYỂN
-                // Nếu Bot Đần (Lv < 2) hoặc Không thấy Player -> Đi Random hoặc hơi hướng về Player
                 if (this.difficulty < 2 || !canSee) {
+                     // Bot Đần hoặc không thấy -> Đi lung tung
                      const dx = player.x - this.x;
                      const dy = player.y - this.y;
-                     // Lv thấp thì cộng thêm nhiều Random (nhiễu)
                      const noise = (5 - this.difficulty) * 0.3; 
                      this.vx = (dx / (Math.abs(dx)+Math.abs(dy))) + (Math.random() - 0.5) * noise;
                      this.vy = (dy / (Math.abs(dx)+Math.abs(dy))) + (Math.random() - 0.5) * noise;
                 } 
                 else {
-                    // Bot Khôn (Lv >= 2) và Đã thấy Player -> Truy đuổi trực tiếp
+                    // Bot Khôn -> Truy đuổi
                     const dx = player.x - this.x;
                     const dy = player.y - this.y;
                     const dist = Math.hypot(dx, dy);
                     
-                    // Nếu quá gần (gần hơn 3 ô) -> Lùi lại hoặc đi ngang (Kiting)
                     if (dist < CELL_SIZE * 3 && this.difficulty >= 3) {
-                         this.vx = -dx / dist; // Đi ngược lại
+                         this.vx = -dx / dist; // Kiting (lùi lại)
                          this.vy = -dy / dist;
                     } else {
-                         this.vx = dx / dist; // Đi tới
+                         this.vx = dx / dist; // Lao tới
                          this.vy = dy / dist;
                     }
                 }
 
-                // B. NHẮM BẮN (AIMING)
+                // B. NHẮM BẮN
                 let targetX = player.x;
                 let targetY = player.y;
 
-                // Nếu Bot Rất Khôn (Lv >= 4) -> Tính toán bắn đón đầu (Predictive Aiming)
+                // Bắn đón đầu (Predictive Aiming)
                 if (this.canPredictAim && player.actualVx !== undefined) {
                     const dist = Math.hypot(player.x - this.x, player.y - this.y);
-                    const timeToHit = dist / BULLET_SPEED; // Thời gian đạn bay tới nơi
-                    
-                    // Dự đoán vị trí tương lai của Player
-                    targetX = player.x + (player.actualVx || 0) * timeToHit * 10; // *10 là hệ số điều chỉnh
+                    const timeToHit = dist / BULLET_SPEED;
+                    targetX = player.x + (player.actualVx || 0) * timeToHit * 10;
                     targetY = player.y + (player.actualVy || 0) * timeToHit * 10;
                 }
 
-                // Cập nhật hướng quay (angle) theo mục tiêu đã tính
                 const aimDx = targetX - this.x;
                 const aimDy = targetY - this.y;
                 this.angle = Math.atan2(aimDy, aimDx);
@@ -202,18 +180,15 @@ export class Bot extends Player {
                 this.dirY = Math.sin(this.angle);
 
             } else {
-                // Player chết hoặc không tồn tại -> Đi lung tung
                 this.vx = (Math.random() * 2 - 1);
                 this.vy = (Math.random() * 2 - 1);
             }
         }
 
-        // Chuẩn hóa vận tốc di chuyển
         const currentSpeedLen = Math.hypot(this.vx, this.vy) || 1;
         this.vx = (this.vx / currentSpeedLen);
         this.vy = (this.vy / currentSpeedLen);
 
-        // Áp dụng giới hạn tốc độ (speedCap)
         const finalSpeed = PLAYER_SPEED * this.speedCap * mapSpeedMod * (delta / 1000);
         const moveX = this.vx * finalSpeed;
         const moveY = this.vy * finalSpeed;
@@ -222,13 +197,10 @@ export class Bot extends Player {
 
         // --- 2. LOGIC KHAI HỎA ---
         this.shootTimer += delta;
-        
-        // Tốc độ bắn cũng giới hạn, không được nhanh hơn người chơi quá nhiều
-        // Người chơi cooldown ~1000ms. Bot min 800ms.
         const botShootCooldown = Math.max(800, 2000 - (this.difficulty * 250)); 
 
         if (this.shootTimer > botShootCooldown && player && player.alive) {
-            // Chỉ bắn nếu: Bot Đần (bắn bừa) HOẶC Bot Khôn + Nhìn thấy Player
+            // Chỉ bắn khi thấy (nếu khôn) hoặc bắn bừa (nếu đần)
             if (!this.hasLineOfSight || this.checkLineOfSight(player)) {
                 this.shootTimer = 0;
                 const vx = this.dirX;
@@ -268,7 +240,7 @@ export function initGame(username, canvasEl) {
     bots = [];
     canShoot = true;
     
-    currentBotDifficulty = 0; // Reset độ khó về 0
+    currentBotDifficulty = 0; 
 
     currentMap = getRandomMap(canvas.width, canvas.height);
     const metaRaw = localStorage.getItem("impulse_user"); 
@@ -301,7 +273,7 @@ export function initGame(username, canvasEl) {
     player = new Player(username, playerStartX, playerStartY, avatarSkinData);
 
     const botSkinData = AVATAR_SKINS["ava_tank_red"] || AVATAR_SKINS["default"];
-    // Spawn Bot đầu tiên: Độ khó 0
+    // Spawn bot đầu tiên: Lv.0
     bots.push(new Bot("Bot Lv.0", botStartX, botStartY, botSkinData, 0));
 }
 
@@ -319,16 +291,16 @@ export function updateGame(delta, keys) {
             const savedUser = localStorage.getItem('impulse_user');
             if (savedUser) {
                 const user = JSON.parse(savedUser);
-                const goldEarned = Math.floor(score / 10); 
+                // Tạm thời 1 điểm = 1 vàng để dễ test
+                const goldEarned = Math.floor(score * 1); 
                 console.log(`📡 Đang lưu điểm: Score ${score}, Gold +${goldEarned}`);
 
                 saveGameResultAPI(user.username, score, goldEarned)
                     .then(data => {
                         console.log("✅ Server đã lưu:", data);
+                        // Cập nhật lại localStorage để đồng bộ ngay lập tức
                         if (data.currentData) {
-                            user.highScore = data.currentData.highScore;
-                            user.gold = data.currentData.gold;
-                            localStorage.setItem('impulse_user', JSON.stringify(user));
+                            localStorage.setItem('impulse_user', JSON.stringify(data.currentData));
                         }
                     })
                     .catch(err => console.error("❌ Lỗi lưu điểm:", err));
@@ -360,15 +332,15 @@ export function updateGame(delta, keys) {
         moveX = player.dirX * totalSpeed;
         moveY = player.dirY * totalSpeed;
         
-        // LƯU VẬN TỐC THỰC TẾ CỦA PLAYER (Để Bot khôn tính toán bắn đón đầu)
-        player.actualVx = moveX / (delta / 1000); // px/s
+        // Lưu vận tốc để Bot tính toán
+        player.actualVx = moveX / (delta / 1000);
         player.actualVy = moveY / (delta / 1000);
     } else {
         player.actualVx = 0;
         player.actualVy = 0;
     }
 
-    // Logic va chạm Player (Giữ nguyên)
+    // Va chạm Player
     const PLAYER_BOX_HALF = PLAYER_RADIUS * 1.25;
     player.x += moveX;
     if (moveX > 0) { 
@@ -476,7 +448,6 @@ export function updateGame(delta, keys) {
         if (!b.remove) {
             bots.forEach(bot => {
                 if (bot.alive) {
-                    // Logic Bot chết (Sửa lỗi tự bắn vào chân)
                     if (b.owner !== bot || b.bounceCount > 0) {
                         if (b.x > bot.x - PLAYER_BOX_HALF && b.x < bot.x + PLAYER_BOX_HALF &&
                             b.y > bot.y - PLAYER_BOX_HALF && b.y < bot.y + PLAYER_BOX_HALF) {
@@ -492,10 +463,10 @@ export function updateGame(delta, keys) {
         }
     });
 
-    // Spawn bot mới khi bot cũ chết
     bots = bots.filter(bot => bot.alive);
     if (bots.length === 0 && !gameOver) {
-        currentBotDifficulty++; // Tăng độ khó
+        // Tăng độ khó khi Bot chết
+        currentBotDifficulty++; 
 
         let botX, botY;
         do {
@@ -505,6 +476,6 @@ export function updateGame(delta, keys) {
             (player && Math.hypot(player.x - botX, player.y - botY) < CELL_SIZE * 5));
         
         bots.push(new Bot(`Bot Lv.${currentBotDifficulty}`, botX, botY, AVATAR_SKINS["ava_tank_red"] || AVATAR_SKINS["default"], currentBotDifficulty));
-        console.log(`🤖 Spawn Bot Mới: Level ${currentBotDifficulty} (Speed: ${Math.min(1.0, 0.5 + currentBotDifficulty*0.1).toFixed(2)})`);
+        console.log(`Spawn Bot Level ${currentBotDifficulty}`);
     }
 }
