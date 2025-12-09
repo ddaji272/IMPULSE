@@ -1,7 +1,7 @@
 import { startMusic, playSound } from "./audio.js";
 import { AVATAR_SKINS, BULLET_SKINS } from "./skins.js";
-// IMPORT CÁC HÀM API
-import { registerAPI, loginAPI, getLeaderboardAPI, equipSkinAPI } from "./api.js";
+// IMPORT CÁC HÀM API (Đã thêm buyItemAPI)
+import { registerAPI, loginAPI, getLeaderboardAPI, equipSkinAPI, buyItemAPI } from "./api.js";
 
 
 export function setupUI(startGameCallback) {
@@ -285,39 +285,33 @@ export function setupUI(startGameCallback) {
         shopList.innerHTML = shopHTML;
         shopPopup.classList.remove("hidden");
 
-        // --- XỬ LÝ MUA (Đã cập nhật logic thông báo lỗi) ---
+        // --- XỬ LÝ MUA (GỌI API THẬT) ---
         shopPopup.querySelectorAll(".buyBtn").forEach(btn => {
-            btn.addEventListener("click", e => {
+            btn.addEventListener("click", async (e) => {
                 const id = e.currentTarget.dataset.id;
                 const price = Number(e.currentTarget.dataset.price);
 
-                if (currentUser.gold >= price) {
+                try {
+                    // Gọi API mua đồ
+                    const data = await buyItemAPI(currentUser.username, type, id, price);
+                    
                     playSound('buy');
-                    currentUser.gold -= price;
-                    
-                    if (!currentUser.ownedAvatars) currentUser.ownedAvatars = ["default"];
-                    if (!currentUser.ownedBullets) currentUser.ownedBullets = ["default"];
+                    showAuthMsg("Mua thành công!", false);
 
-                    if (type === "avatar") {
-                        currentUser.ownedAvatars.push(id);
-                    } else {
-                        currentUser.ownedBullets.push(id);
-                    }
-                    
+                    // Cập nhật lại user local bằng dữ liệu mới nhất từ server
+                    currentUser = data.user;
                     localStorage.setItem('impulse_user', JSON.stringify(currentUser));
                     
-                    showAuthMsg("Mua thành công (Local)!", false);
+                    // Cập nhật lại giao diện Shop
                     openShop(type);
-                } else {
+                } catch (err) {
                     playSound('button_click');
-                    // === LOGIC MỚI: Tính toán tiền thiếu và hiển thị ===
-                    const missing = price - currentUser.gold;
-                    showAuthMsg(`Không đủ tiền! Cần thêm ${missing} vàng.`, true);
+                    showAuthMsg(err.message || "Không đủ tiền!", true);
                 }
             });
         });
 
-        // --- XỬ LÝ TRANG BỊ ---
+        // --- XỬ LÝ TRANG BỊ (GỌI API THẬT) ---
         shopPopup.querySelectorAll(".useBtn").forEach(btn => {
             btn.addEventListener("click", async (e) => {
                 playSound('button_click');
@@ -326,15 +320,20 @@ export function setupUI(startGameCallback) {
                 if (type === "avatar") currentUser.skin = id;
                 else currentUser.bullet = id;
 
-                // Gọi API để lưu lên Server
-                await equipSkinAPI(currentUser.username, 
-                                 type === "avatar" ? id : null, 
-                                 type === "bullet" ? id : null);
-
-                localStorage.setItem('impulse_user', JSON.stringify(currentUser));
-                
-                showAuthMsg(`Đã trang bị: ${id}`, false);
-                openShop(type);
+                try {
+                    // Gọi API lưu trang bị
+                    await equipSkinAPI(currentUser.username, 
+                                     type === "avatar" ? id : null, 
+                                     type === "bullet" ? id : null);
+                    
+                    // Lưu local
+                    localStorage.setItem('impulse_user', JSON.stringify(currentUser));
+                    
+                    showAuthMsg(`Đã trang bị: ${id}`, false);
+                    openShop(type); 
+                } catch (err) {
+                    showAuthMsg("Lỗi khi trang bị!", true);
+                }
             });
         });
     }
