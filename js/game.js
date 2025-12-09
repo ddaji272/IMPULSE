@@ -292,7 +292,7 @@ export function updateGame(delta, keys) {
             if (savedUser) {
                 const user = JSON.parse(savedUser);
                 // Tạm thời 1 điểm = 1 vàng để dễ test
-                const goldEarned = Math.floor(score * 1); 
+                const goldEarned = Math.floor(score * 10); 
                 console.log(`📡 Đang lưu điểm: Score ${score}, Gold +${goldEarned}`);
 
                 saveGameResultAPI(user.username, score, goldEarned)
@@ -479,3 +479,4 @@ export function updateGame(delta, keys) {
         console.log(`Spawn Bot Level ${currentBotDifficulty}`);
     }
 }
+
