@@ -1,8 +1,6 @@
 import { startMusic, playSound } from "./audio.js";
 import { AVATAR_SKINS, BULLET_SKINS } from "./skins.js";
-// IMPORT CÁC HÀM API (Đã thêm buyItemAPI)
 import { registerAPI, loginAPI, getLeaderboardAPI, equipSkinAPI, buyItemAPI } from "./api.js";
-
 
 export function setupUI(startGameCallback) {
     
@@ -16,24 +14,20 @@ export function setupUI(startGameCallback) {
     const usernameInput = document.getElementById("username");
     const passwordInput = document.getElementById("password");
     
-    // UI sau khi đăng nhập
     const userDisplay = document.getElementById("userDisplay");
     const goldAmount = document.getElementById("goldAmount"); 
     const logoutBtn = document.getElementById("btnLogout");
     const menuPlayBtn = document.getElementById("btnPlay"); 
     
-    // UI Demo (Khách)
     const playBtn = document.getElementById("playBtn"); 
     const displayName = document.getElementById("displayName");
     const errorMsg = document.getElementById("error");
 
-    // Các nút chức năng
     const leaderboardBtn = document.getElementById("leaderboardBtn");
     const guideBtn = document.getElementById("guideBtn");
     const leaderboardBtn2 = document.getElementById("btnLeaderboard2");
     const guideBtn2 = document.getElementById("btnGuide2");
     
-    // Popups
     const guidePopup = document.getElementById("guidePopup");
     const leaderboardPopup = document.getElementById("leaderboardPopup");
     const leaderboardList = document.getElementById("leaderboardList");
@@ -46,68 +40,41 @@ export function setupUI(startGameCallback) {
     const avatarBtn = document.getElementById("avatarBtn");
     const bulletBtn = document.getElementById("bulletBtn");
 
-    // --- Helper Hiển thị thông báo ---
     function showAuthMsg(msg, isError = false) {
         if (!authMsg) return;
         authMsg.style.display = "block";
-        authMsg.style.color = isError ? "#ff5c5c" : "#00ffcc"; // Đỏ hoặc Xanh
+        authMsg.style.color = isError ? "#ff5c5c" : "#00ffcc"; 
         authMsg.textContent = msg;
-        // Tự ẩn sau 3s
         setTimeout(() => (authMsg.style.display = "none"), 3000);
     }
 
-    // ============================================================
-    // 1. XỬ LÝ ĐĂNG KÝ & ĐĂNG NHẬP
-    // ============================================================
-
+    // --- AUTH ---
     if (registerBtn) {
         registerBtn.addEventListener("click", async () => {
-            startMusic(); 
-            playSound('button_click');
-            
+            startMusic(); playSound('button_click');
             const user = usernameInput.value.trim();
             const pass = passwordInput.value.trim();
-
-            if (!user || !pass) {
-                showAuthMsg("Vui lòng nhập đầy đủ!", true);
-                return;
-            }
-
+            if (!user || !pass) return showAuthMsg("Nhập đủ thông tin!", true);
             try {
                 await registerAPI(user, pass);
                 showAuthMsg("Đăng ký thành công! Hãy đăng nhập.", false);
-            } catch (err) {
-                showAuthMsg(err.message || "Lỗi đăng ký", true);
-            }
+            } catch (err) { showAuthMsg(err.message, true); }
         });
     }
 
     if (loginBtn) {
         loginBtn.addEventListener("click", async () => {
-            startMusic();
-            playSound('button_click');
-
+            startMusic(); playSound('button_click');
             const user = usernameInput.value.trim();
             const pass = passwordInput.value.trim();
-
-            if (!user || !pass) {
-                showAuthMsg("Vui lòng nhập đầy đủ!", true);
-                return;
-            }
-
+            if (!user || !pass) return showAuthMsg("Nhập đủ thông tin!", true);
             try {
                 const data = await loginAPI(user, pass);
-                
-                const currentUser = data.user;
-                localStorage.setItem('impulse_user', JSON.stringify(currentUser));
-
+                localStorage.setItem('impulse_user', JSON.stringify(data.user));
                 showAuthMsg("Đăng nhập thành công!", false);
-                updateMenuUI(currentUser);
+                updateMenuUI(data.user);
                 switchToMenu();
-
-            } catch (err) {
-                showAuthMsg(err.message || "Sai tài khoản/mật khẩu", true);
-            }
+            } catch (err) { showAuthMsg(err.message, true); }
         });
     }
 
@@ -130,141 +97,88 @@ export function setupUI(startGameCallback) {
         });
     }
 
-    // ============================================================
-    // 2. CÁC NÚT CHƠI GAME
-    // ============================================================
+    if (playBtn) playBtn.addEventListener("click", () => {
+        startMusic(); playSound('button_click');
+        const name = displayName.value.trim();
+        if (!name) return errorMsg.style.display = "block";
+        home.style.display = "none"; canvas.style.display = "block";
+        startGameCallback(name);
+    });
 
-    if (playBtn) {
-        playBtn.addEventListener("click", () => {
-            startMusic();
-            playSound('button_click');
-            const name = displayName.value.trim();
+    if (menuPlayBtn) menuPlayBtn.addEventListener("click", () => {
+        playSound('button_click');
+        const savedUser = localStorage.getItem('impulse_user');
+        if (savedUser) {
+            menu.style.display = "none"; canvas.style.display = "block";
+            startGameCallback(JSON.parse(savedUser).username);
+        }
+    });
 
-            if (!name) {
-                errorMsg.style.display = "block";
-                errorMsg.textContent = "Tên hiển thị không được để trống!";
-                return;
-            }
-            errorMsg.style.display = "none";
-
-            home.style.display = "none";
-            canvas.style.display = "block";
-            startGameCallback(name);
-        });
-    }
-
-    if (menuPlayBtn) {
-        menuPlayBtn.addEventListener("click", () => {
-            playSound('button_click');
-            const savedUser = localStorage.getItem('impulse_user');
-            if (savedUser) {
-                const user = JSON.parse(savedUser);
-                menu.style.display = "none";
-                canvas.style.display = "block";
-                startGameCallback(user.username);
-            }
-        });
-    }
-
-    // ============================================================
-    // 3. LEADERBOARD
-    // ============================================================
-
+    // --- LEADERBOARD ---
     async function loadLeaderboard() {
         if (!leaderboardList) return;
         leaderboardList.innerHTML = "<li>Đang tải...</li>";
-
         try {
             const data = await getLeaderboardAPI();
-            leaderboardList.innerHTML = "";
-            
-            if (data.length === 0) {
-                leaderboardList.innerHTML = "<li>Chưa có dữ liệu</li>";
-                return;
-            }
-
-            leaderboardList.innerHTML = data.map((u, i) => `
-                <li>
-                    <span style="color: yellow">#${i + 1}</span> 
-                    <strong>${u.username}</strong> 
-                    - <span>${u.highScore} 🏆</span>
-                    - <small>(${u.skin || 'default'})</small>
-                </li>
-            `).join("");
-
-        } catch (err) {
-            leaderboardList.innerHTML = `<li style="color:red">Lỗi kết nối Server</li>`;
-        }
+            leaderboardList.innerHTML = data.length ? data.map((u, i) => 
+                `<li><span style="color:yellow">#${i+1}</span> <strong>${u.username}</strong> - ${u.highScore}🏆 <small>(${u.skin})</small></li>`
+            ).join("") : "<li>Chưa có dữ liệu</li>";
+        } catch (err) { leaderboardList.innerHTML = "<li>Lỗi tải BXH</li>"; }
     }
-
     const openLeaderboard = () => {
         playSound('button_click');
         if (leaderboardPopup) leaderboardPopup.classList.remove("hidden");
         loadLeaderboard();
     };
-
     if (leaderboardBtn) leaderboardBtn.addEventListener("click", openLeaderboard);
     if (leaderboardBtn2) leaderboardBtn2.addEventListener("click", openLeaderboard);
 
-    // ============================================================
-    // 4. HƯỚNG DẪN & ĐÓNG POPUP
-    // ============================================================
-    
-    const openGuide = () => {
-        playSound('button_click');
-        if (guidePopup) guidePopup.classList.remove("hidden");
-    };
+    // --- GUIDE ---
+    const openGuide = () => { playSound('button_click'); guidePopup.classList.remove("hidden"); };
     if (guideBtn) guideBtn.addEventListener("click", openGuide);
     if (guideBtn2) guideBtn2.addEventListener("click", openGuide);
-
     closeBtns.forEach(btn => btn.addEventListener("click", () => {
         playSound('button_click');
-        if (guidePopup) guidePopup.classList.add("hidden");
-        if (leaderboardPopup) leaderboardPopup.classList.add("hidden");
-        if (shopPopup) shopPopup.classList.add("hidden");
+        document.querySelectorAll('.popup').forEach(p => p.classList.add('hidden'));
     }));
 
-    // ============================================================
-    // 5. SHOP SYSTEM
-    // ============================================================
-
+    // --- SHOP SYSTEM ---
     function openShop(type) {
         if (!shopPopup) return;
-
         shopTitle.textContent = type === "avatar" ? "Kho Skin Avatar" : "Kho Skin Đạn";
         
         const savedUser = localStorage.getItem('impulse_user');
-        if (!savedUser) {
-            showAuthMsg("Vui lòng đăng nhập lại!", true);
-            return;
-        }
+        if (!savedUser) return showAuthMsg("Vui lòng đăng nhập lại!", true);
         let currentUser = JSON.parse(savedUser);
         
         if (goldAmount) goldAmount.textContent = currentUser.gold || 0;
 
         const SKIN_DATA = (type === "avatar") ? AVATAR_SKINS : BULLET_SKINS;
         
+        // Xác định skin hiện tại đang dùng (để disable nút)
         let currentSkinId = (type === "avatar") ? (currentUser.skin || "default") : (currentUser.bullet || "default");
         
-        let ownedIds = currentUser.ownedAvatars || ["default"];
-        if (!ownedIds.includes(currentSkinId)) ownedIds.push(currentSkinId);
+        let ownedIds = (type === "avatar") ? (currentUser.ownedAvatars || ["default"]) : (currentUser.ownedBullets || ["default"]);
+        if (!ownedIds.includes("default")) ownedIds.push("default");
 
-        let ownedHTML = "";
-        let shopHTML = "";
+        let ownedHTML = "", shopHTML = "";
 
         for (const skinId in SKIN_DATA) {
             const skin = SKIN_DATA[skinId];
-            if (skinId === "default") continue;
-
+            
             if (ownedIds.includes(skinId)) {
+                // Đã sở hữu -> Nút Dùng
+                // Kiểm tra xem có đang dùng skin này không
+                const isEquipped = (skinId === currentSkinId);
                 ownedHTML += `
                     <li>
                         ${skin.name} 
-                        <button data-id="${skinId}" class="useBtn" ${skinId === currentSkinId ? 'disabled' : ''}>
-                            ${skinId === currentSkinId ? 'Đang dùng' : 'Dùng'}
+                        <button data-id="${skinId}" class="useBtn" ${isEquipped ? 'disabled' : ''}>
+                            ${isEquipped ? 'Đang dùng' : 'Dùng'}
                         </button>
                     </li>`;
             } else {
+                // Chưa sở hữu -> Nút Mua
                 shopHTML += `
                     <li>
                         ${skin.name} <strong>${skin.price}🪙</strong> 
@@ -272,67 +186,57 @@ export function setupUI(startGameCallback) {
                     </li>`;
             }
         }
-
-        const defaultSkinName = (type === "avatar") ? AVATAR_SKINS.default.name : BULLET_SKINS.default.name;
-        ownedList.innerHTML = `
-            <li>
-                ${defaultSkinName}
-                <button data-id="default" class="useBtn" ${"default" === currentSkinId ? 'disabled' : ''}>
-                    ${"default" === currentSkinId ? 'Đang dùng' : 'Dùng'}
-                </button>
-            </li>` + ownedHTML;
-            
+        
+        ownedList.innerHTML = ownedHTML;
         shopList.innerHTML = shopHTML;
         shopPopup.classList.remove("hidden");
 
-        // --- XỬ LÝ MUA (GỌI API THẬT) ---
+        // --- XỬ LÝ MUA ---
         shopPopup.querySelectorAll(".buyBtn").forEach(btn => {
             btn.addEventListener("click", async (e) => {
                 const id = e.currentTarget.dataset.id;
                 const price = Number(e.currentTarget.dataset.price);
 
                 try {
-                    // Gọi API mua đồ
                     const data = await buyItemAPI(currentUser.username, type, id, price);
-                    
                     playSound('buy');
                     showAuthMsg("Mua thành công!", false);
 
-                    // Cập nhật lại user local bằng dữ liệu mới nhất từ server
+                    // Cập nhật lại user từ server trả về
                     currentUser = data.user;
                     localStorage.setItem('impulse_user', JSON.stringify(currentUser));
                     
-                    // Cập nhật lại giao diện Shop
-                    openShop(type);
+                    openShop(type); // Refresh giao diện
                 } catch (err) {
                     playSound('button_click');
-                    showAuthMsg(err.message || "Không đủ tiền!", true);
+                    showAuthMsg(err.message || "Không mua được!", true);
                 }
             });
         });
 
-        // --- XỬ LÝ TRANG BỊ (GỌI API THẬT) ---
+        // --- XỬ LÝ TRANG BỊ (ĐÃ SỬA) ---
         shopPopup.querySelectorAll(".useBtn").forEach(btn => {
             btn.addEventListener("click", async (e) => {
                 playSound('button_click');
                 const id = e.currentTarget.dataset.id;
                 
-                if (type === "avatar") currentUser.skin = id;
-                else currentUser.bullet = id;
-
                 try {
                     // Gọi API lưu trang bị
-                    await equipSkinAPI(currentUser.username, 
+                    const data = await equipSkinAPI(currentUser.username, 
                                      type === "avatar" ? id : null, 
                                      type === "bullet" ? id : null);
                     
-                    // Lưu local
-                    localStorage.setItem('impulse_user', JSON.stringify(currentUser));
+                    // QUAN TRỌNG: Cập nhật lại localStorage từ dữ liệu Server trả về
+                    if (data && data.user) {
+                        currentUser = data.user;
+                        localStorage.setItem('impulse_user', JSON.stringify(currentUser));
+                    }
                     
                     showAuthMsg(`Đã trang bị: ${id}`, false);
-                    openShop(type); 
+                    openShop(type); // Refresh để cập nhật nút "Đang dùng"
                 } catch (err) {
                     showAuthMsg("Lỗi khi trang bị!", true);
+                    console.error(err);
                 }
             });
         });
@@ -343,8 +247,7 @@ export function setupUI(startGameCallback) {
 
     const savedUser = localStorage.getItem('impulse_user');
     if (savedUser) {
-        const user = JSON.parse(savedUser);
-        updateMenuUI(user);
+        updateMenuUI(JSON.parse(savedUser));
         switchToMenu();
     }
 }
