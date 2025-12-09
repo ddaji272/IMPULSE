@@ -1,5 +1,4 @@
-// js/ui.js - ĐÃ SỬA LỖI HIỂN THỊ TÊN SKIN
-
+// js/ui.js
 import { startMusic, playSound } from "./audio.js";
 import { AVATAR_SKINS, BULLET_SKINS } from "./skins.js";
 import { registerAPI, loginAPI, getLeaderboardAPI, equipSkinAPI, buyItemAPI } from "./api.js";
@@ -116,17 +115,22 @@ export function setupUI(startGameCallback) {
         }
     });
 
-    // --- LEADERBOARD ---
+    // --- LEADERBOARD (ĐÃ SỬA: Hiển thị tên thay vì ID) ---
     async function loadLeaderboard() {
         if (!leaderboardList) return;
         leaderboardList.innerHTML = "<li>Đang tải...</li>";
         try {
             const data = await getLeaderboardAPI();
-            leaderboardList.innerHTML = data.length ? data.map((u, i) => 
-                `<li><span style="color:yellow">#${i+1}</span> <strong>${u.username}</strong> - ${u.highScore}🏆 <small>(${u.skin})</small></li>`
-            ).join("") : "<li>Chưa có dữ liệu</li>";
+            leaderboardList.innerHTML = data.length ? data.map((u, i) => {
+                // SỬA: Tra cứu tên skin từ AVATAR_SKINS
+                // Nếu tìm thấy thì lấy .name, không thấy thì hiện ID gốc
+                const skinName = AVATAR_SKINS[u.skin] ? AVATAR_SKINS[u.skin].name : u.skin;
+                
+                return `<li><span style="color:yellow">#${i+1}</span> <strong>${u.username}</strong> - ${u.highScore}🏆 <small>(${skinName})</small></li>`;
+            }).join("") : "<li>Chưa có dữ liệu</li>";
         } catch (err) { leaderboardList.innerHTML = "<li>Lỗi tải BXH</li>"; }
     }
+
     const openLeaderboard = () => {
         playSound('button_click');
         if (leaderboardPopup) leaderboardPopup.classList.remove("hidden");
@@ -217,7 +221,7 @@ export function setupUI(startGameCallback) {
             });
         });
 
-        // --- XỬ LÝ TRANG BỊ (ĐÃ SỬA CHỖ NÀY) ---
+        // --- XỬ LÝ TRANG BỊ ---
         shopPopup.querySelectorAll(".useBtn").forEach(btn => {
             btn.addEventListener("click", async (e) => {
                 playSound('button_click');
@@ -235,7 +239,6 @@ export function setupUI(startGameCallback) {
                         localStorage.setItem('impulse_user', JSON.stringify(currentUser));
                     }
                     
-                    // --- SỬA LỖI HIỂN THỊ TÊN ---
                     // Lấy tên từ biến SKIN_DATA (đã được chọn đúng loại ở đầu hàm)
                     const skinName = SKIN_DATA[id] ? SKIN_DATA[id].name : id;
                     showAuthMsg(`Đã trang bị: ${skinName}`, false);
